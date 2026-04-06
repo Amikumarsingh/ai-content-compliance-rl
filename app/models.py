@@ -30,9 +30,10 @@ class Observation(BaseModel):
         stage: Current decision stage (classification/decision/refinement).
         previous_action: Previous action taken (None on first step).
         action_history: List of all actions taken in this episode.
+        feedback: Feedback message from the environment.
     """
 
-    content: str = Field(..., description="The text content being evaluated")
+    content: str = Field(..., description="The text content being evaluated", max_length=1000)
     violations: list[str] = Field(
         default_factory=list,
         description="List of detected violation types"
@@ -59,6 +60,10 @@ class Observation(BaseModel):
     action_history: list[str] = Field(
         default_factory=list,
         description="List of all actions taken in this episode"
+    )
+    feedback: Optional[str] = Field(
+        default=None,
+        description="Feedback message from the environment"
     )
 
     @field_validator("score")

@@ -1,0 +1,212 @@
+# OpenEnv Specification for Content Compliance RL Environment
+# Version: 1.0.0
+# Compatible with OpenEnv Hackathon 2026
+
+name: content-moderation-rl
+version: 1.0.0
+description: Production-grade OpenEnv environment for AI content moderation training
+
+# Environment type
+type: content_moderation
+
+# Author and metadata
+author: Content Moderation RL Team
+license: MIT
+repository: https://github.com/content-moderation-rl
+
+# OpenAI integration
+evaluator:
+  provider: openai
+  model: gpt-4o-mini
+  timeout: 10.0
+  max_retries: 2
+  fallback: rule_based
+
+# Action space definition
+action_space:
+  type: discrete
+  actions:
+    - name: approve
+      description: Content passes compliance check (terminal action)
+      terminal: true
+    - name: reject
+      description: Content violates policies (terminal action)
+      terminal: true
+    - name: edit
+      description: Modify content to fix violations (continues episode)
+      terminal: false
+      requires: edited_content
+
+# Observation space definition
+observation_space:
+  type: dict
+  fields:
+    content:
+      type: str
+      max_length: 1000
+      description: Text content being evaluated
+    violations:
+      type: list[str]
+      description: Detected violation types
+    score:
+      type: float
+      range: [0.0, 1.0]
+      description: Compliance score
+    step_count:
+      type: int
+      min: 0
+      description: Current step number
+    stage:
+      type: str
+      enum: [classification, decision, refinement]
+      description: Current decision stage
+    previous_action:
+      type: str
+      nullable: true
+      description: Last action taken
+    action_history:
+      type: list[str]
+      description: All actions in episode
+    feedback:
+      type: str
+      nullable: true
+      description: Environment feedback
+
+# Reward structure
+reward:
+  range: [0.0, 1.0]
+  type: shaped
+  components:
+    correct_action:
+      value: 0.7
+      description: Correct approve/reject decision
+    edit_bonus:
+      value: 0.8
+      description: Successful content edit
+    partial_detection:
+      value: 0.3-0.6
+      description: Partial violation detection
+    wrong_action:
+      value: 0.0-0.2
+      description: Incorrect decision
+    harmful_approval:
+      value: -0.5
+      description: Approving dangerous content
+    step_penalty:
+      value: -0.05
+      per_step: true
+      description: Penalty for extra steps
+
+# Violation types supported
+violations:
+  - hate_speech: Language targeting groups with hate/slurs
+  - violence: Threats or glorification of violence
+  - harassment: Personal attacks, insults, demeaning language
+  - adult_content: Explicit or sexually suggestive content
+  - misinformation: False claims, conspiracy theories
+  - spam: Promotional content, excessive self-promotion
+  - suspicious_link: Shortened URLs or suspicious links
+  - engagement_bait: Manipulative engagement requests
+  - illegal_content: References to illegal activities
+
+# Task configurations
+tasks:
+  easy:
+    description: Binary approve/reject classification
+    max_steps: 2
+    content_types: [clean, spam, hate]
+    expected_accuracy: 0.95
+    examples:
+      - content: "Hello! Welcome to our community!"
+        expected_action: approve
+        violations: []
+      - content: "BUY NOW!!! Click here!!!"
+        expected_action: reject
+        violations: [spam]
+      - content: "I hate all those people!"
+        expected_action: reject
+        violations: [hate_speech]
+
+  medium:
+    description: Edit content to achieve compliance
+    max_steps: 3
+    content_types: [borderline_spam, subtle_harassment]
+    expected_accuracy: 0.80
+    examples:
+      - content: "Check out this opportunity! (Not spam) bit.ly/xyz"
+        expected_action: edit
+        violations: [spam, suspicious_link]
+      - content: "Some people are too delusional to understand."
+        expected_action: edit
+        violations: [harassment]
+
+  hard:
+    description: Multi-step reasoning for complex violations
+    max_steps: 5
+    content_types: [multi_violation, coded_hate]
+    expected_accuracy: 0.65
+    examples:
+      - content: "They don't want you to know the truth! Wake up! Share before deleted!"
+        expected_action: reject
+        violations: [misinformation, engagement_bait, conspiracy]
+
+# Termination conditions
+termination:
+  - type: correct_action
+    description: Agent takes correct terminal action
+  - type: max_steps
+    description: Maximum steps reached
+  - type: harmful_approval
+    description: Dangerous content approved (immediate termination)
+
+# Logging format
+logging:
+  format: "[START]/[STEP]/[END]"
+  strict: true
+  components:
+    - start: Episode initialization
+    - step: Each action taken with reward
+    - end: Episode summary with metrics
+
+# Performance metrics
+metrics:
+  - name: easy_accuracy
+    target: ">=0.95"
+  - name: medium_accuracy
+    target: ">=0.80"
+  - name: hard_accuracy
+    target: ">=0.65"
+  - name: average_reward
+    target: ">=0.6"
+  - name: openai_success_rate
+    target: ">=0.95"
+
+# Environment variables
+environment_variables:
+  - OPENAI_API_KEY: Required for OpenAI evaluation
+  - LLM_MODEL: Model name (default: gpt-4o-mini)
+  - API_BASE_URL: Custom API endpoint (optional)
+  - DEBUG: Enable debug logging (true/false)
+
+# API endpoints
+api:
+  endpoints:
+    - GET /: API information
+    - GET /health: Health check
+    - POST /reset: Reset environment
+    - POST /step: Take action
+    - GET /state: Get current state
+    - GET /spec: Environment specification
+  port: 7860
+  host: "0.0.0.0"
+
+# Deployment
+deployment:
+  docker:
+    base_image: python:3.9-slim
+    port: 7860
+    healthcheck: /health
+  huggingface:
+    runtime: docker
+    secrets:
+      - OPENAI_API_KEY

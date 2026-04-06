@@ -2,12 +2,13 @@
 
 [![OpenEnv Compatible](https://img.shields.io/badge/OpenEnv-Compatible-blue)](https://openenv.ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-ready-green.svg)](https://hub.docker.com)
+[![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Hugging%20Face%20Spaces-blue)](https://huggingface.co/spaces)
 
 A production-grade OpenEnv environment for training AI agents on real-world content moderation tasks.
 
-## 🎯 Overview
+## Overview
 
 This environment simulates content moderation workflows where AI agents must:
 
@@ -24,14 +25,13 @@ This environment simulates content moderation workflows where AI agents must:
 - **Production-ready** with Docker support and Hugging Face Spaces deployment
 - **Strict logging format** for reproducibility: `[START]`, `[STEP]`, `[END]`
 
-## 📦 Installation
+## Quick Start
 
-### Quick Start
+### Local Development
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/content-moderation-rl.git
-cd content-moderation-rl
+# Clone and navigate to the project
+cd hf_setup
 
 # Install dependencies
 pip install -r requirements.txt
@@ -39,6 +39,12 @@ pip install -r requirements.txt
 # Set up environment variables
 cp .env.example .env
 # Edit .env and add your OPENAI_API_KEY
+
+# Run the FastAPI server
+python -m uvicorn app:app --host 0.0.0.0 --port 7860
+
+# Test the API
+curl http://localhost:7860/health
 ```
 
 ### Environment Variables
@@ -51,20 +57,21 @@ OPENAI_API_KEY=sk-...
 LLM_MODEL=gpt-4o-mini       # Model for content evaluation
 API_BASE_URL=https://api.openai.com/v1  # Custom API endpoint
 DEBUG=false                  # Enable debug logging
+PORT=7860                    # Server port
 ```
 
-## 🚀 Usage
+## Usage
 
 ### Python API
 
 ```python
-from env_openenv import ContentModerationEnv
+from env import ContentComplianceEnv
+from models import Action
 
 # Create environment
-env = ContentModerationEnv(
+env = ContentComplianceEnv(
     max_steps=5,
     difficulty="mixed",  # easy, medium, hard, mixed
-    evaluator_provider="openai"
 )
 
 # Reset episode
@@ -74,26 +81,31 @@ print(f"Violations: {obs.violations}")
 print(f"Score: {obs.score}")
 
 # Take actions
-from app.models import Action
-
 action = Action(action_type="reject")
-result = env.step(action)
+observation, reward, done, truncated, info = env.step(action)
 
-print(f"Reward: {result.reward.value}")
-print(f"Done: {result.done}")
+print(f"Reward: {reward.value}")
+print(f"Done: {done}")
 ```
 
-### Run Inference
+### REST API
 
 ```bash
-# Run baseline inference with OpenAI
-python inference.py
+# Reset environment
+curl -X POST http://localhost:7860/reset \
+    -H "Content-Type: application/json" \
+    -d '{"difficulty": "easy", "max_steps": 2}'
 
-# Expected output format:
-# [START] Content Compliance Inference
-# [STEP] easy_001: Evaluating content...
-# [STEP] easy_001: action=reject, correct=True, reward=0.700
-# [END] Average reward: 0.680
+# Take a step
+curl -X POST http://localhost:7860/step \
+    -H "Content-Type: application/json" \
+    -d '{"action_type": "reject", "env_id": "abc123"}'
+
+# Get current state
+curl http://localhost:7860/state
+
+# Get environment specification
+curl http://localhost:7860/spec
 ```
 
 ### Docker Deployment
@@ -103,22 +115,25 @@ python inference.py
 docker build -t content-moderation-rl .
 
 # Run container
-docker run -p 8000:8000 \
+docker run -p 7860:7860 \
     -e OPENAI_API_KEY=sk-... \
     content-moderation-rl
 
 # Test health endpoint
-curl http://localhost:8000/health
+curl http://localhost:7860/health
 ```
 
-### Hugging Face Spaces
+### Hugging Face Spaces Deployment
 
-1. Create new Space with Docker runtime
-2. Upload all files including `Dockerfile`
-3. Add `OPENAI_API_KEY` as Space secret
-4. Space automatically deploys
+1. Create new Space at https://huggingface.co/spaces
+2. Select **Docker** as the runtime
+3. Upload all files from `hf_setup/` directory
+4. Add `OPENAI_API_KEY` as Space secret (Settings → Secrets)
+5. Space automatically deploys
 
-## 📋 Environment Specification
+Your space will be available at: `https://huggingface.co/spaces/your-username/content-moderation-rl`
+
+## Environment Specification
 
 ### Action Space
 
@@ -157,108 +172,99 @@ curl http://localhost:8000/health
 
 | Component | Value | Description |
 |-----------|-------|-------------|
-| Correct approve | +1.0 | Correctly approving compliant content |
-| Correct reject | +1.0 | Correctly rejecting violating content |
-| Partial edit | +0.5 | Editing when appropriate |
-| Wrong action | 0.0-0.3 | Incorrect decision |
-| Harmful approval | -0.2 | Approving dangerous content |
+| Correct action | +0.7 | Correct approve/reject decision |
+| Good edit | +0.8 | Successful content edit |
+| Partial detection | +0.3-0.6 | Partial violation detection |
+| Wrong action | +0.0-0.2 | Incorrect decision |
+| Harmful approval | -0.5 | Approving dangerous content |
 | Step penalty | -0.05 | Per extra step |
 
-## 🎮 Task Difficulty
+## Task Difficulty
 
 ### Easy Tasks
 - Obvious spam detection
 - Clear hate speech identification
 - Clean content approval
-- Expected accuracy: 95%
+- **Expected accuracy**: 95%
 
 ### Medium Tasks
 - Borderline promotional content
 - Subtle harassment detection
 - Edit-required content
-- Expected accuracy: 80%
+- **Expected accuracy**: 80%
 
 ### Hard Tasks
 - Multi-violation content
 - Coded hate speech
 - Misinformation with truth mixing
-- Expected accuracy: 65%
+- **Expected accuracy**: 65%
 
-## 📊 Logging Format
+## Logging Format
 
-The inference script uses strict logging for reproducibility:
-
-```
-[START] Content Compliance Inference
-[START] Model: gpt-4o-mini
-[START] Tasks: ['easy', 'medium', 'hard']
-[STEP] easy_001: Evaluating content...
-[STEP] easy_001: action=approve, expected=approve, correct=True, reward=0.700
-[END] Average reward: 0.680
-```
-
-## 🏗️ Architecture
+The environment uses strict logging for reproducibility:
 
 ```
-content-moderation-rl/
-├── env_openenv.py        # Main OpenEnv environment
-├── models.py             # Pydantic models (Action, Observation, Reward)
-├── tasks/
-│   └── tasks.py          # Task definitions
-├── graders/
-│   ├── openai_evaluator.py  # OpenAI-based evaluation
-│   └── graders.py        # Deterministic scoring
-├── utils/
-│   ├── content_generator.py # Dynamic content generation
-│   └── data_loader.py    # Data loading utilities
-├── inference.py          # Baseline inference script
-├── server/
-│   └── app.py            # FastAPI OpenEnv server
-├── openenv.yaml          # Environment specification
-├── Dockerfile            # Docker deployment
-└── requirements.txt      # Python dependencies
+[START] env_id=abc123, difficulty=easy, score=0.90
+[STEP] env_id=abc123, step=1, action=reject, reward=0.700, done=True
+[STEP] env_id=abc123, step=1, action=edit, score=0.80, reward=0.880
+[STEP] env_id=abc123, step=2, final=approve, score=0.85, reward=0.700
 ```
 
-## 🧪 Testing
+## Architecture
+
+```
+hf_setup/
+├── app.py                  # FastAPI server with OpenEnv endpoints
+├── env.py                  # ContentComplianceEnv implementation
+├── models.py               # Pydantic models (Observation, Action, Reward)
+├── openenv.yaml            # OpenEnv specification
+├── Dockerfile              # Docker deployment
+├── requirements.txt        # Python dependencies
+└── README.md               # This file
+```
+
+### Dependencies
+
+- `graders/openai_evaluator.py` - OpenAI-based content evaluation
+- `graders/graders.py` - Deterministic scoring logic
+
+## Testing
 
 ```bash
-# Run unit tests
-pytest tests/
+# Test environment creation
+python -c "from env import ContentComplianceEnv; env = ContentComplianceEnv(); obs = env.reset(); print(obs)"
+
+# Test API endpoints
+curl http://localhost:7860/health
+curl http://localhost:7860/spec
 
 # Validate OpenEnv spec
 openenv validate
-
-# Test environment
-python -c "from env_openenv import ContentModerationEnv; env = ContentModerationEnv(); obs = env.reset(); print(obs)"
 ```
 
-## 📈 Performance Metrics
+## Performance Metrics
 
 | Metric | Target | Description |
 |--------|--------|-------------|
 | Easy accuracy | ≥95% | Correct decisions on obvious cases |
 | Medium accuracy | ≥80% | Correct decisions on borderline content |
 | Hard accuracy | ≥65% | Correct decisions on complex content |
-| Overall reward | ≥0.6 | Average normalized reward |
+| Average reward | ≥0.6 | Average normalized reward |
 | OpenAI success rate | ≥95% | Successful API evaluations |
 
-## 🔧 Configuration
+## API Endpoints
 
-### openenv.yaml
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | API information |
+| `/health` | GET | Health check |
+| `/reset` | POST | Reset environment |
+| `/step` | POST | Take action |
+| `/state` | GET | Get current state |
+| `/spec` | GET | Environment specification |
+| `/metrics` | GET | Server metrics |
 
-```yaml
-name: content-moderation-rl
-version: 1.0.0
-tasks:
-  easy:
-    max_steps: 2
-  medium:
-    max_steps: 3
-  hard:
-    max_steps: 5
-```
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
@@ -266,21 +272,15 @@ tasks:
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see LICENSE for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - OpenEnv team for the environment specification
 - OpenAI for content evaluation capabilities
 - Content moderation research community
-
-## 📞 Support
-
-- Issues: GitHub Issues
-- Discussions: GitHub Discussions
-- Email: team@example.com
 
 ---
 
