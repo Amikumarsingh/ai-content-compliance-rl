@@ -27,6 +27,9 @@ class Observation(BaseModel):
         violations: List of detected violation types.
         score: Compliance score from 0.0 to 1.0.
         step_count: Current step within the episode.
+        stage: Current decision stage (classification/decision/refinement).
+        previous_action: Previous action taken (None on first step).
+        action_history: List of all actions taken in this episode.
     """
 
     content: str = Field(..., description="The text content being evaluated")
@@ -44,6 +47,18 @@ class Observation(BaseModel):
         default=0,
         ge=0,
         description="Current step within the episode"
+    )
+    stage: str = Field(
+        default="decision",
+        description="Current decision stage: classification, decision, or refinement"
+    )
+    previous_action: Optional[str] = Field(
+        default=None,
+        description="Previous action taken (None on first step)"
+    )
+    action_history: list[str] = Field(
+        default_factory=list,
+        description="List of all actions taken in this episode"
     )
 
     @field_validator("score")

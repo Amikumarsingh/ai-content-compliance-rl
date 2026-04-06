@@ -27,8 +27,15 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # Configure logging - only output [START], [STEP], [END] format
+# Suppress HTTP request logs from openai client
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
@@ -43,6 +50,9 @@ logger = logging.getLogger(__name__)
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+# Validate API key
+_API_KEY_VALID = OPENAI_API_KEY and not OPENAI_API_KEY.startswith("YOUR_") and "here" not in OPENAI_API_KEY.lower()
 
 # Task configurations
 TASK_CONFIGS = {
@@ -114,6 +124,12 @@ class ContentComplianceInference:
         if self._client is None:
             try:
                 from openai import AsyncOpenAI
+
+                # Validate API key before creating client
+                if not self.api_key or self.api_key.startswith("YOUR_") or "here" in self.api_key.lower():
+                    logger.info("[STEP] Invalid API key format, using mock inference")
+                    return None
+
                 self._client = AsyncOpenAI(
                     base_url=self.api_base_url,
                     api_key=self.api_key,
@@ -152,12 +168,12 @@ Respond with JSON:
         """Call the model with retry logic."""
         client = self._get_client()
 
+        # Use mock if client unavailable
+        if client is None:
+            return self._mock_inference(user_prompt)
+
         for attempt in range(max_retries):
             try:
-                if client is None or not self.api_key:
-                    # Mock inference
-                    return self._mock_inference(user_prompt)
-
                 response = await client.chat.completions.create(
                     model=self.model_name,
                     messages=[
@@ -184,7 +200,12 @@ Respond with JSON:
                 if attempt == max_retries - 1:
                     return {"action": "reject", "edited_content": None, "reasoning": "Parse error"}
             except Exception as e:
-                logger.info(f"[STEP] API error (attempt {attempt + 1}): {e}")
+                error_msg = str(e)
+                # Don't log full error for API key issues - just note it's invalid
+                if "401" in error_msg or "invalid_api_key" in error_msg.lower():
+                    logger.info(f"[STEP] Invalid API key (attempt {attempt + 1})")
+                else:
+                    logger.info(f"[STEP] API error (attempt {attempt + 1}): {type(e).__name__}")
                 if attempt == max_retries - 1:
                     return self._mock_inference(user_prompt)
 
@@ -505,16 +526,21 @@ Respond with JSON:
 
 async def main():
     """Main entry point."""
-    if not OPENAI_API_KEY:
-        logger.info("[START] WARNING: OPENAI_API_KEY not set, using mock inference")
+    # Validate API key
+    api_key_valid = OPENAI_API_KEY and not OPENAI_API_KEY.startswith("YOUR_") and "here" not in OPENAI_API_KEY.lower()
+
+    if not api_key_valid:
+        logger.info("[START] WARNING: Invalid API key, using mock inference")
+        logger.info("[START] To use OpenAI, edit .env and set OPENAI_API_KEY")
+    else:
+        logger.info(f"[START] API Key: {'*' * 8}{OPENAI_API_KEY[-4:]}")
 
     logger.info("[START] Content Compliance Inference")
-    logger.info(f"[START] API Key: {'*' * 8}{OPENAI_API_KEY[-4:] if len(OPENAI_API_KEY) > 4 else 'not set'}")
 
     engine = ContentComplianceInference(
         api_base_url=API_BASE_URL,
         model_name=MODEL_NAME,
-        api_key=OPENAI_API_KEY,
+        api_key=OPENAI_API_KEY if api_key_valid else "",
     )
 
     try:
