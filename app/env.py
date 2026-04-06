@@ -13,8 +13,14 @@ Rewards accumulate across all steps.
 from __future__ import annotations
 
 import logging
+import os
 from enum import Enum
 from typing import Any, Optional
+
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from app.models import Action, Observation, Reward, StepResult
 from app.reward import AdvancedRewardCalculator
