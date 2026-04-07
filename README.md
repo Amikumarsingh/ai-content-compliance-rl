@@ -1,3 +1,18 @@
+---
+title: AI Content Compliance OpenEnv
+emoji: 🛡️
+colorFrom: violet
+colorTo: cyan
+sdk: docker
+app_port: 7860
+tags:
+  - reinforcement-learning
+  - content-moderation
+  - openenv
+  - fastapi
+license: mit
+---
+
 # Content Moderation RL Environment
 
 [![OpenEnv Compatible](https://img.shields.io/badge/OpenEnv-Compatible-blue)](https://openenv.ai)
