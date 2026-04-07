@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -41,21 +42,19 @@ MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN     = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
 DEBUG        = os.getenv("DEBUG", "false").lower() == "true"
 
-TASK_NAME  = "content_compliance"
-BENCHMARK  = "content_compliance_env"
+TASK_NAME = "content_compliance"
+BENCHMARK = "content_compliance_env"
 
 if not HF_TOKEN:
     print("[ERROR] HF_TOKEN or OPENAI_API_KEY must be set.", flush=True)
     sys.exit(1)
 
-# Task configurations — unchanged from original
 TASK_CONFIGS = {
     "easy":   {"max_steps": 2, "description": "Binary approve/reject decision"},
     "medium": {"max_steps": 3, "description": "Edit content to achieve compliance"},
     "hard":   {"max_steps": 5, "description": "Multi-issue content resolution"},
 }
 
-# Test cases — unchanged from original
 TEST_CASES = {
     "easy": [
         {"id": "easy_001", "is_compliant": True},
@@ -73,6 +72,10 @@ TEST_CASES = {
 
 # ── Stdout loggers ────────────────────────────────────────────────────────────
 
+def _fmt(v: float) -> str:
+    return str(int(v)) if v == int(v) else f"{v:.2f}"
+
+
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
@@ -86,11 +89,6 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     )
 
 
-def _fmt(v: float) -> str:
-    """Format float: show integer if whole number, else 2 decimal places."""
-    return str(int(v)) if v == int(v) else f"{v:.2f}"
-
-
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     score = max(0.0, min(1.0, score))
     rewards_str = ",".join(_fmt(r) for r in rewards)
@@ -101,7 +99,7 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
     )
 
 
-# ── Inference result dataclass — unchanged ────────────────────────────────────
+# ── Dataclass ─────────────────────────────────────────────────────────────────
 
 @dataclass
 class InferenceResult:
@@ -113,7 +111,7 @@ class InferenceResult:
     explanation: str
 
 
-# ── Inference engine — all logic unchanged ────────────────────────────────────
+# ── Inference engine ──────────────────────────────────────────────────────────
 
 class ContentComplianceInference:
 
@@ -123,11 +121,19 @@ class ContentComplianceInference:
         self.results: list[InferenceResult] = []
         self.task_scores: dict[str, list[float]] = {"easy": [], "medium": [], "hard": []}
 
-    def _generate_content(self, is_compliant: bool = True) -> str:
-        if is_compliant:
-            return "Hello! Welcome to our community platform. Looking forward to connecting!"
-        else:
-            return "I hate all those people. They should all die! Click here now!!!"
+    def _generate_content(self, is_compliant: bool = True, task_id: str = "") -> str:
+        compliant_pool = [
+            "Hello! Welcome to our community platform. Looking forward to connecting!",
+            "Great discussion everyone. Thanks for sharing your thoughts respectfully.",
+            "Looking forward to the upcoming community event this weekend!",
+        ]
+        non_compliant_pool = [
+            "I hate all those people. They should all die! Click here now!!!",
+            "You are such an idiot. Buy now!!! Limited offer, free prizes!!!",
+            "Fake news! Scientists are lying. Kill all who disagree. bit.ly/scam",
+        ]
+        idx = int(hashlib.md5(task_id.encode()).hexdigest(), 16) % 3
+        return compliant_pool[idx] if is_compliant else non_compliant_pool[idx]
 
     def _evaluate_content(self, content: str) -> EvaluationResult:
         result = self.evaluator.evaluate(content)
@@ -142,42 +148,43 @@ class ContentComplianceInference:
         is_compliant: bool,
         edit_made: bool = False,
         improvement: float = 0.0,
+        eval_score: float = 0.5,
     ) -> float:
-        if action == expected_action:
-            base_reward = 0.6
-        elif action in ["approve", "reject"]:
-            base_reward = 0.1
+        if edit_made:
+            # edit reward: higher when more violations present (more to fix)
+            if improvement > 0:
+                reward = (1 - eval_score) * 0.8
+            else:
+                reward = 0.0  # unnecessary edit
+        elif action == "approve" and is_compliant:
+            reward = eval_score                    # correct approve
+        elif action == "reject" and not is_compliant:
+            reward = 1 - eval_score                # correct reject
+        elif action == "approve" and not is_compliant:
+            reward = eval_score * 0.1              # wrong approve — missed violation
+        elif action == "reject" and is_compliant:
+            reward = (1 - eval_score) * 0.1        # wrong reject — false positive
         else:
-            base_reward = 0.3
+            reward = 0.0
 
-        edit_bonus = 0.0
-        if edit_made and improvement > 0:
-            edit_bonus = min(0.2, improvement * 0.3)
-        elif edit_made and improvement <= 0:
-            edit_bonus = -0.1
-
-        efficiency_bonus = 0.1
-        total_reward = base_reward + edit_bonus + efficiency_bonus
-        return max(0.0, min(1.0, total_reward))
+        return max(0.0, min(1.0, round(reward, 4)))
 
     async def run_easy_task(self, test_case: dict[str, Any]) -> list[InferenceResult]:
         task_id = test_case["id"]
         is_compliant = test_case.get("is_compliant", True)
         expected_action = "approve" if is_compliant else "reject"
-        content = self._generate_content(is_compliant)
+        content = self._generate_content(is_compliant, task_id=task_id)
         results = []
 
         eval_result = self._evaluate_content(content)
         action = "approve" if eval_result.is_compliant else "reject"
-        reward = self._calculate_reward(action, expected_action, is_compliant)
-        error = None
+        reward = self._calculate_reward(action, expected_action, is_compliant, eval_score=eval_result.score)
 
         results.append(InferenceResult(
             task_id=task_id, step_number=1, action=action,
             reward=reward, done=True, explanation=eval_result.reason,
         ))
-
-        log_step(step=1, action=action, reward=reward, done=True, error=error)
+        log_step(step=1, action=action, reward=reward, done=True, error=None)
         self.task_scores["easy"].append(reward)
         return results
 
@@ -186,27 +193,26 @@ class ContentComplianceInference:
         original_score = test_case.get("original_score", 0.2)
         results = []
 
-        content = self._generate_content(is_compliant=False)
+        content = self._generate_content(is_compliant=False, task_id=task_id)
 
         # Step 1: edit
         eval_result = self._evaluate_content(content)
         action = "edit"
-        improvement = min(0.6, 0.3 + len(content) / 100)
-        current_score = min(0.85, original_score + improvement)
-        reward = self._calculate_reward(action, "edit", False, edit_made=True, improvement=improvement)
-        error = None
+        improvement = min(0.6, 0.3 + len(eval_result.violations) * 0.1)
+        current_score = min(0.9, original_score + improvement)
+        reward = self._calculate_reward(action, "edit", False, edit_made=True, improvement=improvement, eval_score=eval_result.score)
 
         results.append(InferenceResult(
             task_id=task_id, step_number=1, action=action,
             reward=reward, done=False, explanation=eval_result.reason,
         ))
-        log_step(step=1, action=action, reward=reward, done=False, error=error)
+        log_step(step=1, action=action, reward=reward, done=False, error=None)
 
         # Step 2: final decision
         expected_final = "approve" if current_score >= 0.5 else "reject"
         final_eval = self._evaluate_content("Edited clean content")
         final_action = "approve" if final_eval.is_compliant else "reject"
-        final_reward = self._calculate_reward(final_action, expected_final, current_score >= 0.5)
+        final_reward = self._calculate_reward(final_action, expected_final, current_score >= 0.5, eval_score=final_eval.score)
 
         results.append(InferenceResult(
             task_id=task_id, step_number=2, action=final_action,
@@ -222,14 +228,14 @@ class ContentComplianceInference:
         true_violations = test_case.get("true_violations", [])
         results = []
 
-        content = self._generate_content(is_compliant=False)
+        content = self._generate_content(is_compliant=False, task_id=task_id)
 
         # Step 1: detect
         eval_result = self._evaluate_content(content)
         detected = eval_result.violations if eval_result.violations else ["multiple"]
         true_set = set(true_violations)
         detection_accuracy = len(true_set & set(detected)) / len(true_set) if true_set else 1.0
-        reward = 0.3 * detection_accuracy
+        reward = max(0.0, min(1.0, round(detection_accuracy, 4)))
         action = f"detect({len(detected)}_violations)"
 
         results.append(InferenceResult(
@@ -239,7 +245,7 @@ class ContentComplianceInference:
         log_step(step=1, action=action, reward=reward, done=False, error=None)
 
         # Step 2: edit
-        edit_reward = 0.3 + 0.2
+        edit_reward = max(0.0, min(1.0, round((1 - eval_result.score) * 0.8, 4)))
         results.append(InferenceResult(
             task_id=task_id, step_number=2, action="edit",
             reward=edit_reward, done=False, explanation="Edit applied",
@@ -248,8 +254,9 @@ class ContentComplianceInference:
 
         # Step 3: final
         final_eval = self._evaluate_content("Edited content after violations removed")
-        final_action = "approve"
-        final_reward = 0.4
+        final_action = "approve" if final_eval.is_compliant else "reject"
+        final_reward = max(0.0, min(1.0, round(final_eval.score, 4)))
+
         results.append(InferenceResult(
             task_id=task_id, step_number=3, action=final_action,
             reward=final_reward, done=True, explanation=final_eval.reason,
@@ -273,18 +280,15 @@ class ContentComplianceInference:
 
             for test_case in cases:
                 task_id = test_case["id"]
-                rewards_this_task: list[float] = []
-
                 log_start(task=f"{TASK_NAME}_{task_id}", env=BENCHMARK, model=self.model_name)
 
                 try:
                     results = await runner(test_case)
                     all_results[difficulty].extend(results)
                     rewards_this_task = [r.reward for r in results]
-                    steps = len(results)
-                    score = max(0.0, min(1.0, round(sum(rewards_this_task), 4)))
+                    score = max(0.0, min(1.0, round(sum(rewards_this_task) / len(rewards_this_task), 4)))
                     success = score >= 0.5
-                    log_end(success=success, steps=steps, score=score, rewards=rewards_this_task)
+                    log_end(success=success, steps=len(results), score=score, rewards=rewards_this_task)
 
                 except Exception as e:
                     log_end(success=False, steps=0, score=0.0, rewards=[])
@@ -312,7 +316,6 @@ async def main() -> None:
 
     try:
         summary = await engine.run_all_tasks()
-
         avg = summary["average_reward"]
         print(f"\nBaseline average score: {_fmt(avg)} / 1.0", flush=True)
 
