@@ -146,6 +146,15 @@ with gr.Blocks(
 
     gr.Markdown("""
     ---
+    ### 🚀 Quick Start
+    1. **Pick a sample** — click any sample button above to load example content
+    2. **Choose an action** — decide whether to Approve, Reject, or Edit the content
+    3. **Click Evaluate** — see the compliance score, violations, and your reward
+    4. **Learn the pattern** — correct decisions give reward 1.0, wrong ones give 0.0
+
+    > 💡 Tip: Start with the sample buttons to understand what each violation looks like
+
+    ---
     ### 📋 How It Works
     | Action | When to use | Reward |
     |--------|-------------|--------|
