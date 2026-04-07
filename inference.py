@@ -86,11 +86,17 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     )
 
 
+def _fmt(v: float) -> str:
+    """Format float: show integer if whole number, else 2 decimal places."""
+    return str(int(v)) if v == int(v) else f"{v:.2f}"
+
+
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    score = max(0.0, min(1.0, score))
+    rewards_str = ",".join(_fmt(r) for r in rewards)
     print(
         f"[END] success={str(success).lower()} steps={steps} "
-        f"score={score:.3f} rewards={rewards_str}",
+        f"score={_fmt(score)} rewards={rewards_str}",
         flush=True,
     )
 
@@ -276,7 +282,7 @@ class ContentComplianceInference:
                     all_results[difficulty].extend(results)
                     rewards_this_task = [r.reward for r in results]
                     steps = len(results)
-                    score = round(sum(rewards_this_task), 4)
+                    score = max(0.0, min(1.0, round(sum(rewards_this_task), 4)))
                     success = score >= 0.5
                     log_end(success=success, steps=steps, score=score, rewards=rewards_this_task)
 
@@ -308,7 +314,7 @@ async def main() -> None:
         summary = await engine.run_all_tasks()
 
         avg = summary["average_reward"]
-        print(f"\nBaseline average score: {avg:.4f} / 1.0", flush=True)
+        print(f"\nBaseline average score: {_fmt(avg)} / 1.0", flush=True)
 
         with open("inference_results.json", "w") as f:
             json.dump({"model": MODEL_NAME, "summary": summary}, f, indent=2)
