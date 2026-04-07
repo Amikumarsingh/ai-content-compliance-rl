@@ -20,5 +20,11 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PORT=7860
 ENV EVALUATOR_PROVIDER=mock
+# Gradio calls the FastAPI backend on port 8000 internally
+ENV API_BASE_URL=http://localhost:8000
 
-CMD ["python", "gradio_app.py"]
+# Start script runs both FastAPI (port 8000) and Gradio (port 7860)
+COPY start.sh .
+RUN chmod +x start.sh
+
+CMD ["./start.sh"]
