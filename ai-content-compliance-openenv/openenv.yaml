@@ -1,0 +1,153 @@
+name: ContentComplianceEnv
+description: |
+  Async Content Compliance Environment for training RL agents
+  on content moderation tasks. Evaluates text content for policy
+  violations (hate_speech, violence, harassment, adult_content,
+  misinformation, spam, illegal_content) and provides normalized
+  reward signals (0.0 to 1.0) for compliance training.
+
+version: 1.0.0
+
+action_space:
+  type: discrete
+  actions:
+    - name: approve
+      description: Content passes compliance review (terminal action)
+      value: 0
+    - name: reject
+      description: Content violates policies and is rejected (terminal action)
+      value: 1
+    - name: edit
+      description: Content needs modification (continues episode)
+      value: 2
+      requires: edited_content
+
+observation_space:
+  type: dict
+  fields:
+    content:
+      type: str
+      description: The text content being evaluated
+    violations:
+      type: list[str]
+      description: List of detected violation types
+      items:
+        type: str
+        enum:
+          - hate_speech
+          - violence
+          - harassment
+          - adult_content
+          - misinformation
+          - spam
+          - illegal_content
+    score:
+      type: float
+      description: Compliance score (0.0 = non-compliant, 1.0 = fully compliant)
+      range: [0.0, 1.0]
+    step_count:
+      type: int
+      description: Current step within the episode
+      min: 0
+
+reward:
+  type: float
+  range: [0.0, 1.0]
+  description: |
+    Normalized reward signal where:
+    - 1.0: Perfect action (correct approve/reject with high confidence)
+    - 0.5: Neutral action
+    - 0.0: Worst action (incorrect approve/reject with high confidence)
+
+  normalization:
+    method: min_max
+    raw_range: [-12.0, 12.0]
+    formula: (raw_reward - REWARD_MIN) / (REWARD_MAX - REWARD_MIN)
+    clamping: max(0.0, min(1.0, normalized))
+
+  structure:
+    approve_correct:
+      range: [0.67, 1.0]
+      description: Correctly approving compliant content
+    approve_incorrect:
+      range: [0.0, 0.33]
+      description: Incorrectly approving non-compliant content
+    reject_correct:
+      range: [0.5, 0.83]
+      description: Correctly rejecting non-compliant content
+    reject_incorrect:
+      range: [0.0, 0.5]
+      description: Incorrectly rejecting compliant content
+    edit_with_violations:
+      range: [0.17, 0.42]
+      description: Editing content that has violations
+    edit_without_violations:
+      range: [0.0, 0.17]
+      description: Editing content without violations (penalized)
+    truncated:
+      range: [0.0, 0.42]
+      description: Episode truncated without terminal action
+
+episode:
+  max_steps: 5
+  termination:
+    - action: approve (terminal)
+    - action: reject (terminal)
+    - max_steps_reached (truncated)
+
+tasks:
+  - id: content_moderation
+    name: Content Moderation
+    description: |
+      Learn to correctly identify and moderate content that violates
+      platform policies while allowing compliant content to pass.
+    objective: Maximize cumulative reward by making correct approve/reject decisions
+    success_criteria:
+      - Correctly approve compliant content (score >= 0.5)
+      - Correctly reject non-compliant content (score < 0.5)
+      - Minimize episodes ending in truncation
+
+  - id: content_editing
+    name: Content Editing
+    description: |
+      Learn to identify when content needs editing and successfully
+      modify it to meet compliance standards.
+    objective: Transform non-compliant content into compliant content through edits
+    success_criteria:
+      - Edit only when violations are present
+      - Successfully reach compliance after editing
+      - Terminate with approve after successful edit
+
+  - id: sequential_decision
+    name: Sequential Decision Making
+    description: |
+      Learn multi-step strategies for content moderation, including
+      when to edit versus when to make terminal decisions.
+    objective: Optimize decision sequence for maximum episode reward
+    success_criteria:
+      - Efficient use of edit actions
+      - Timely terminal decisions
+      - High final compliance scores
+
+difficulty_levels:
+  - easy: Content with clear violations or compliance
+  - medium: Content with subtle policy issues
+  - hard: Borderline content requiring nuanced judgment
+  - mixed: Random sampling across all difficulty levels
+
+evaluators:
+  - provider: mock
+    description: Deterministic rule-based evaluation for testing
+  - provider: openai
+    description: LLM-based evaluation using OpenAI models
+    models:
+      - gpt-4o
+      - gpt-4-turbo
+      - gpt-3.5-turbo
+
+metadata:
+  author: Content Compliance RL Team
+  license: MIT
+  repository: https://github.com/ai_content_compliance_rl
+  paper: TBD
+  citation: TBD

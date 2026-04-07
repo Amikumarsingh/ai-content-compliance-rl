@@ -1,0 +1,42 @@
+# Docker Compose configuration for Content Compliance RL
+
+version: "3.8"
+
+services:
+  # Main application server
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "7860:7860"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - API_BASE_URL=${API_BASE_URL:-https://api.openai.com/v1}
+      - MODEL_NAME=${MODEL_NAME:-gpt-4o}
+      - EVALUATOR_PROVIDER=${EVALUATOR_PROVIDER:-mock}
+    volumes:
+      - ./results:/app/results
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Training service (optional)
+  train:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles:
+      - train
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - API_BASE_URL=${API_BASE_URL:-https://api.openai.com/v1}
+      - MODEL_NAME=${MODEL_NAME:-gpt-4o}
+    volumes:
+      - ./results:/app/results
+    command: python main.py train
+    restart: "no"
