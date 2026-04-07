@@ -83,7 +83,7 @@ def log_start(task: str, env: str, model: str) -> None:
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     error_val = error if error else "null"
     print(
-        f"[STEP] step={step} action={action} reward={reward:.2f} "
+        f"[STEP] step={step} action={action} reward={_fmt(reward)} "
         f"done={str(done).lower()} error={error_val}",
         flush=True,
     )
