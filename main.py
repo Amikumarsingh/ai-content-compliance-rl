@@ -22,8 +22,12 @@ def run_demo():
 def run_train():
     """Run training."""
     print("Training mode...")
-    from agents.q_agent import QLearningAgent
-    from openenv import ContentComplianceEnv, Action
+    try:
+        from agents.q_agent import QLearningAgent  # type: ignore
+        from openenv import ContentComplianceEnv, Action  # type: ignore
+    except ImportError as e:
+        print(f"Training dependencies not available: {e}")
+        return
     import asyncio
 
     async def train():
@@ -74,7 +78,7 @@ def run_train():
 def run_serve():
     """Start the API server."""
     import uvicorn
-    from server.main import app
+    from hf_server import app  # type: ignore
 
     port = 7860
     print(f"Starting server on port {port}...")
@@ -83,7 +87,11 @@ def run_serve():
 
 def run_tests():
     """Run tests."""
-    import pytest
+    try:
+        import pytest  # type: ignore
+    except ImportError:
+        print("pytest not installed. Run: pip install pytest")
+        sys.exit(1)
     sys.exit(pytest.main(["-v", "graders/", "rewards/"]))
 
 
