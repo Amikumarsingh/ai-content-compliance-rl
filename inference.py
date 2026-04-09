@@ -47,10 +47,14 @@ TASK_NAME = "content_compliance"
 
 # ── Log helpers ───────────────────────────────────────────────────────────────
 
+def _clamp(v: float) -> float:
+    """Clamp to strictly (0, 1) — validator rejects exact 0.0 or 1.0."""
+    return round(max(0.01, min(0.99, v)), 3)
+
+
 def _fmt(v: float) -> str:
-    if v == int(v):
-        return str(int(v))
-    return f"{v:.3f}".rstrip('0')
+    s = f"{v:.3f}".rstrip('0').rstrip('.')
+    return s
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -66,8 +70,8 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
 
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    score = max(0.0, min(1.0, score))
-    rewards_str = ",".join(_fmt(r) for r in rewards)
+    score = _clamp(score)
+    rewards_str = ",".join(_fmt(_clamp(r)) for r in rewards)
     print(
         f"[END] success={str(success).lower()} steps={steps} "
         f"score={_fmt(score)} rewards={rewards_str}",
@@ -178,32 +182,26 @@ def calc_reward(action: str, violations: list, score: float, step: int) -> float
 
     if action == "approve":
         if is_compliant:
-            # Correct approve — penalise slightly for taking extra steps
-            r = 1.0 - step_penalty
+            r = 0.95 - step_penalty          # correct approve, never reaches 1.0
         else:
-            # Wrong approve — penalise harder for more severe violations
-            r = max(0.0, 0.3 - severe_count * 0.15 - moderate_count * 0.05)
+            r = max(0.02, 0.3 - severe_count * 0.15 - moderate_count * 0.05)
 
     elif action == "reject":
         if not is_compliant:
-            # Correct reject — bonus for catching severe violations
-            r = min(1.0, 0.6 + severe_count * 0.15 + moderate_count * 0.05) - step_penalty
+            r = min(0.95, 0.6 + severe_count * 0.15 + moderate_count * 0.05) - step_penalty
         else:
-            # False positive — penalise
-            r = 0.2
+            r = 0.15                          # false positive
 
     elif action == "edit":
         if not is_compliant:
-            # Partial credit — more violations = more room to improve
-            r = min(0.65, 0.25 + minor_count * 0.1 + moderate_count * 0.08) - step_penalty
+            r = min(0.6, 0.25 + minor_count * 0.1 + moderate_count * 0.08) - step_penalty
         else:
-            # Unnecessary edit
-            r = 0.1
+            r = 0.08                          # unnecessary edit
 
     else:
-        r = 0.0
+        r = 0.05
 
-    return round(max(0.0, min(1.0, r)), 3)
+    return round(max(0.01, min(0.99, r)), 3)  # strictly (0, 1)
 
 
 # ── Task cases ────────────────────────────────────────────────────────────────
@@ -286,7 +284,7 @@ async def run_task(client: OpenAI, task_id: str, content: str, max_steps: int) -
         log_step(step=step, action=action, reward=reward, done=done, error=None)
         time.sleep(0.2)
 
-    final_score = round(sum(rewards) / len(rewards), 3) if rewards else 0.0
+    final_score = _clamp(sum(rewards) / len(rewards)) if rewards else 0.05
     return rewards, final_score
 
 
@@ -317,7 +315,7 @@ async def main() -> None:
                 log_end(success=success, steps=len(rewards), score=score, rewards=rewards)
             except Exception as exc:
                 print(f"[DEBUG] Task {task_id} failed: {exc}", flush=True)
-                log_end(success=False, steps=0, score=0.0, rewards=[])
+                log_end(success=False, steps=0, score=0.05, rewards=[0.05])
 
     overall = round(sum(all_scores) / len(all_scores), 3) if all_scores else 0.0
     overall = max(0.0, min(1.0, overall))
