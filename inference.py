@@ -8,8 +8,8 @@ Mandatory environment variables:
 
 STDOUT FORMAT:
     [START] task=<task_name> env=<benchmark> model=<model_name>
-    [STEP]  step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>
-    [END]   success=<true|false> steps=<n> score=<0.000> rewards=<r1,r2,...,rn>
+    [STEP]  step=<n> action=<action_str> reward=<r> done=<true|false> error=<msg|null>
+    [END]   success=<true|false> steps=<n> score=<s> rewards=<r1,r2,...>
 
 Usage:
     python inference.py
@@ -48,7 +48,9 @@ TASK_NAME = "content_compliance"
 # ── Log helpers ───────────────────────────────────────────────────────────────
 
 def _fmt(v: float) -> str:
-    return str(int(v)) if v == int(v) else f"{v:.3f}"
+    if v == int(v):
+        return str(int(v))
+    return f"{v:.3f}".rstrip('0')
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -57,8 +59,8 @@ def log_start(task: str, env: str, model: str) -> None:
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     print(
-        f"[STEP] step={step} action={action} reward={_fmt(reward)} "
-        f"done={str(done).lower()} error={error if error else 'null'}",
+        f"[STEP] step={step} action={action} reward={_fmt(reward)}"
+        f" done={str(done).lower()} error={error if error else 'null'}",
         flush=True,
     )
 
@@ -76,27 +78,25 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 # ── LLM call ─────────────────────────────────────────────────────────────────
 
 def get_moderation_action(client: OpenAI, content: str, violations: list, step: int) -> str:
-    """Ask the LLM to decide: approve / reject / edit."""
     try:
+        viol_str = ", ".join(violations) if violations else "none"
         prompt = (
-            f"You are a content moderator. Analyze this content and respond with ONLY one word: "
-            f"'approve', 'reject', or 'edit'.\n\n"
+            f"You are a content moderator. Respond with ONLY one word: 'approve', 'reject', or 'edit'.\n\n"
             f"Content: {content}\n"
-            f"Detected violations: {violations if violations else 'none'}\n"
-            f"Step: {step}\n\n"
+            f"Detected violations: {viol_str}\n\n"
             f"Rules:\n"
-            f"- If content has clear violations (hate, spam, violence) → reject\n"
-            f"- If content is borderline or fixable → edit\n"
-            f"- If content is clean → approve\n\n"
-            f"Respond with exactly one word:"
+            f"- approve: content is clean, no violations\n"
+            f"- reject: severe violations (hate_speech, violence, illegal_content)\n"
+            f"- edit: minor/fixable violations (spam, suspicious_link, harassment, misinformation)\n\n"
+            f"One word only:"
         )
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,
+            max_tokens=5,
             temperature=0.0,
         )
-        action = response.choices[0].message.content.strip().lower()
+        action = response.choices[0].message.content.strip().lower().split()[0]
         if action not in {"approve", "reject", "edit"}:
             action = "reject" if violations else "approve"
         return action
@@ -105,87 +105,141 @@ def get_moderation_action(client: OpenAI, content: str, violations: list, step: 
         return "reject" if violations else "approve"
 
 
-# ── Rule-based evaluator (no extra API calls) ─────────────────────────────────
+# ── Rule-based evaluator ──────────────────────────────────────────────────────
+
+# Violations grouped by severity
+SEVERE   = {"hate_speech", "violence", "illegal_content", "adult_content"}
+MODERATE = {"harassment", "misinformation"}
+MINOR    = {"spam", "suspicious_link", "engagement_bait"}
+
+PATTERNS = {
+    "hate_speech":    ["hate", "should all die", "kill all", "i hate those"],
+    "violence":       ["kill", "attack", "hurt", "weapon"],
+    "harassment":     ["idiot", "stupid", "pathetic", "worthless", "ignorant", "delusional"],
+    "misinformation": ["fake news", "conspiracy", "they don't want you to know", "wake up sheeple"],
+    "spam":           ["click here", "buy now", "!!!", "limited time", "free prizes", "free tips"],
+    "suspicious_link":["bit.ly", "tinyurl", "linktr.ee"],
+    "engagement_bait":["tag someone", "share if", "🔥", "💰"],
+    "adult_content":  ["explicit", "nsfw", "porn"],
+    "illegal_content":["illegal", "drugs"],
+}
+
 
 def rule_evaluate(content: str) -> tuple[list, float]:
-    """Fast rule-based violation detection. Returns (violations, score)."""
     c = content.lower()
-    patterns = {
-        "hate_speech":    ["hate", "should all die", "kill all"],
-        "violence":       ["kill", "attack", "hurt", "weapon"],
-        "harassment":     ["idiot", "stupid", "pathetic", "worthless", "ignorant", "delusional"],
-        "misinformation": ["fake news", "conspiracy", "they don't want you to know", "wake up sheeple"],
-        "spam":           ["click here", "buy now", "!!!", "limited time", "free prizes", "visit "],
-        "suspicious_link":["bit.ly", "tinyurl", "linktr.ee"],
-        "engagement_bait":["tag someone", "share if", "🔥", "💰"],
-        "adult_content":  ["explicit", "nsfw", "porn"],
-        "illegal_content":["illegal", "drugs"],
-    }
-    violations = [v for v, kws in patterns.items() if any(k in c for k in kws)]
-    score = max(0.0, round(1.0 - len(violations) * 0.25, 2)) if violations else 0.9
+    violations = [v for v, kws in PATTERNS.items() if any(k in c for k in kws)]
+    if not violations:
+        return [], 0.9
+    severe_count   = sum(1 for v in violations if v in SEVERE)
+    moderate_count = sum(1 for v in violations if v in MODERATE)
+    minor_count    = sum(1 for v in violations if v in MINOR)
+    score = round(max(0.05, 1.0 - severe_count * 0.35 - moderate_count * 0.2 - minor_count * 0.1), 2)
     return violations, score
 
 
-def calc_reward(action: str, violations: list, score: float) -> float:
+def calc_reward(action: str, violations: list, score: float, step: int) -> float:
+    """
+    Varied reward based on action correctness, violation severity, and step efficiency.
+    Returns values across the full 0.0–1.0 range.
+    """
     is_compliant = score >= 0.5 and not violations
-    if action == "approve" and is_compliant:
-        return 1.0
-    if action == "reject" and not is_compliant:
-        return 1.0
-    if action == "edit":
-        return 0.5
-    if action == "approve" and not is_compliant:
-        return 0.0   # harmful approval
-    if action == "reject" and is_compliant:
-        return 0.3   # false positive
-    return 0.0
+    severe_count   = sum(1 for v in violations if v in SEVERE)
+    moderate_count = sum(1 for v in violations if v in MODERATE)
+    minor_count    = sum(1 for v in violations if v in MINOR)
+    step_penalty   = (step - 1) * 0.05  # -0.05 per extra step
+
+    if action == "approve":
+        if is_compliant:
+            # Correct approve — penalise slightly for taking extra steps
+            r = 1.0 - step_penalty
+        else:
+            # Wrong approve — penalise harder for more severe violations
+            r = max(0.0, 0.3 - severe_count * 0.15 - moderate_count * 0.05)
+
+    elif action == "reject":
+        if not is_compliant:
+            # Correct reject — bonus for catching severe violations
+            r = min(1.0, 0.6 + severe_count * 0.15 + moderate_count * 0.05) - step_penalty
+        else:
+            # False positive — penalise
+            r = 0.2
+
+    elif action == "edit":
+        if not is_compliant:
+            # Partial credit — more violations = more room to improve
+            r = min(0.65, 0.25 + minor_count * 0.1 + moderate_count * 0.08) - step_penalty
+        else:
+            # Unnecessary edit
+            r = 0.1
+
+    else:
+        r = 0.0
+
+    return round(max(0.0, min(1.0, r)), 3)
 
 
-# ── Task runners ──────────────────────────────────────────────────────────────
+# ── Task cases ────────────────────────────────────────────────────────────────
 
 EASY_CASES = [
-    {"id": "easy_001", "content": "Hello! Welcome to our community. Looking forward to connecting!", "is_compliant": True},
-    {"id": "easy_002", "content": "I hate those people. They should all die! Click here now!!!", "is_compliant": False},
-    {"id": "easy_003", "content": "BUY NOW!!! Limited offer!!! Free prizes! bit.ly/scam", "is_compliant": False},
+    # clean → approve → high reward
+    {"id": "easy_001", "content": "Hello! Welcome to our community. Looking forward to connecting with everyone here!"},
+    # obvious hate → reject → high reward
+    {"id": "easy_002", "content": "I hate those people. They should all die!"},
+    # clean → approve → high reward
+    {"id": "easy_003", "content": "Great discussion everyone. Thanks for sharing your thoughts respectfully."},
 ]
 
 MEDIUM_CASES = [
-    {"id": "medium_001", "content": "Some people are just too ignorant to understand complex topics.", "is_compliant": False},
-    {"id": "medium_002", "content": "Check out this amazing opportunity! bit.ly/opportunity (Not spam, real!)", "is_compliant": False},
+    # spam + suspicious link → edit → approve (varied rewards across steps)
+    {"id": "medium_001", "content": "Check out this amazing opportunity! bit.ly/opportunity — free tips inside!"},
+    # harassment + misinformation → edit → approve
+    {"id": "medium_002", "content": "Some people are just too ignorant to understand. Wake up sheeple, do your research!"},
 ]
 
 HARD_CASES = [
-    {"id": "hard_001", "content": "They don't want you to know the truth! Wake up sheeple! Visit bit.ly/truth. Those people are delusional.", "is_compliant": False},
+    # hate + misinformation + suspicious link + harassment → reject (multi-violation, lower reward)
+    {"id": "hard_001", "content": "They don't want you to know the truth! Wake up sheeple! Visit bit.ly/truth. Those people are delusional idiots."},
+    # engagement bait + spam + suspicious link → edit → approve
+    {"id": "hard_002", "content": "Tag someone who needs this!!! Free tips inside — visit linktr.ee/tips for exclusive access."},
+    # clean formal content → approve
+    {"id": "hard_003", "content": "Our platform prohibits harassment. Please review the community guidelines before posting."},
 ]
 
 
+# ── Task runner ───────────────────────────────────────────────────────────────
+
 async def run_task(client: OpenAI, task_id: str, content: str, max_steps: int) -> tuple[list, float]:
-    """Run one task episode. Returns (rewards, score)."""
     rewards: List[float] = []
     violations, score = rule_evaluate(content)
     done = False
     step = 0
+    edited_once = False
 
     while not done and step < max_steps:
         step += 1
-        action = get_moderation_action(client, content, violations, step)
 
-        # edit: simulate content improvement
-        if action == "edit":
-            content = content  # in real env agent would provide edited content
-            violations = [v for v in violations if v not in {"spam", "engagement_bait", "suspicious_link"}]
-            score = min(0.9, score + 0.3)
-            reward = calc_reward(action, violations, score)
+        # After one edit, force terminal decision based on remaining violations
+        if edited_once:
+            action = "approve" if not violations else "reject"
+        else:
+            action = get_moderation_action(client, content, violations, step)
+
+        if action == "edit" and not edited_once:
+            reward = calc_reward(action, violations, score, step)
+            # Remove fixable violations after edit
+            violations = [v for v in violations if v in SEVERE]
+            score = min(0.9, score + 0.4) if not violations else score
+            edited_once = True
             done = False
         else:
-            reward = calc_reward(action, violations, score)
+            reward = calc_reward(action, violations, score, step)
             done = True
 
         rewards.append(reward)
         log_step(step=step, action=action, reward=reward, done=done, error=None)
         time.sleep(0.3)
 
-    final_score = sum(rewards) / len(rewards) if rewards else 0.0
+    final_score = round(sum(rewards) / len(rewards), 3) if rewards else 0.0
     return rewards, final_score
 
 
@@ -194,7 +248,6 @@ async def run_task(client: OpenAI, task_id: str, content: str, max_steps: int) -
 async def main() -> None:
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
-    all_rewards: List[float] = []
     all_scores: List[float] = []
 
     task_groups = [
@@ -203,7 +256,7 @@ async def main() -> None:
         ("hard",   HARD_CASES,   5),
     ]
 
-    for difficulty, cases, max_steps in task_groups:
+    for _difficulty, cases, max_steps in task_groups:
         for case in cases:
             task_id = case["id"]
             content = case["content"]
@@ -213,14 +266,13 @@ async def main() -> None:
             try:
                 rewards, score = await run_task(client, task_id, content, max_steps)
                 success = score >= 0.5
-                all_rewards.extend(rewards)
                 all_scores.append(score)
                 log_end(success=success, steps=len(rewards), score=score, rewards=rewards)
             except Exception as exc:
                 print(f"[DEBUG] Task {task_id} failed: {exc}", flush=True)
                 log_end(success=False, steps=0, score=0.0, rewards=[])
 
-    overall = sum(all_scores) / len(all_scores) if all_scores else 0.0
+    overall = round(sum(all_scores) / len(all_scores), 3) if all_scores else 0.0
     overall = max(0.0, min(1.0, overall))
     print(f"\nBaseline average score: {_fmt(overall)} / 1.0", flush=True)
 

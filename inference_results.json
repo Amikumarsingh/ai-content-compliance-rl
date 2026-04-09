@@ -1,15 +1,14 @@
 {
   "model": "gpt-4o-mini",
-  "summary": {
-    "total_tasks": 10,
-    "total_steps": 10,
-    "average_reward": 0.7140722222222222,
-    "task_scores": {
-      "easy": 0.7333333333333334,
-      "medium": 0.74,
-      "hard": 0.6044333333333333
-    },
-    "duration_seconds": 21.707719,
-    "model": "gpt-4o-mini"
-  }
+  "average_score": 0.823,
+  "task_scores": [
+    1.0,
+    0.75,
+    1.0,
+    0.7,
+    0.68,
+    0.7,
+    0.75,
+    1.0
+  ]
 }
