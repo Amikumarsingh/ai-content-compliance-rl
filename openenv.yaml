@@ -176,6 +176,20 @@ api:
 
 # Configuration options
 config:
+  API_BASE_URL:
+    type: string
+    default: https://api.openai.com/v1
+    description: The API endpoint for the LLM (mandatory)
+
+  MODEL_NAME:
+    type: string
+    default: gpt-4o-mini
+    description: The model identifier to use for inference (mandatory)
+
+  HF_TOKEN:
+    type: string
+    description: Your Hugging Face / API key (mandatory)
+
   evaluator_provider:
     type: string
     default: openai
@@ -183,11 +197,6 @@ config:
       - openai
       - fallback
     description: Content evaluation backend
-
-  model_name:
-    type: string
-    default: gpt-4o-mini
-    description: Model for content evaluation
 
   difficulty:
     type: string

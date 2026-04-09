@@ -7,13 +7,13 @@ import os
 import gradio as gr
 import requests
 
-BASE_URL = os.getenv("API_BASE_URL", "http://localhost:7860")
+BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 # ── API helpers ────────────────────────────────────────────────────────────────
 
 def api_reset(difficulty):
     try:
-        r = requests.post(f"{BASE_URL}/reset", json={"difficulty": difficulty, "max_steps": 5}, timeout=15)
+        r = requests.post(f"{BASE_URL}/reset", json={"difficulty": difficulty, "max_steps": 5}, timeout=5)
         return r.json()
     except Exception as e:
         return {"status": "error", "info": {"error": str(e)}}
@@ -23,7 +23,7 @@ def api_step(action_type, edited_content=None):
         payload = {"action_type": action_type}
         if edited_content and edited_content.strip():
             payload["edited_content"] = edited_content
-        r = requests.post(f"{BASE_URL}/step", json=payload, timeout=15)
+        r = requests.post(f"{BASE_URL}/step", json=payload, timeout=5)
         return r.json()
     except Exception as e:
         return {"status": "error", "info": {"error": str(e)}}

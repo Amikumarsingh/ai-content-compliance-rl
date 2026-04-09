@@ -1,7 +1,7 @@
 """
 Inference Script — Content Compliance RL Environment
 =====================================================
-MANDATORY environment variables:
+Mandatory environment variables:
     API_BASE_URL   The API endpoint for the LLM.
     MODEL_NAME     The model identifier to use for inference.
     HF_TOKEN       Your Hugging Face / API key.
@@ -18,14 +18,11 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import os
 import sys
 import time
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, List, Optional
+from typing import List, Optional
 
 try:
     from dotenv import load_dotenv
@@ -33,47 +30,25 @@ try:
 except ImportError:
     pass
 
-from graders.openai_evaluator import OpenAIEvaluator, EvaluationResult
+from openai import OpenAI
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Mandatory config ──────────────────────────────────────────────────────────
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN     = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
-DEBUG        = os.getenv("DEBUG", "false").lower() == "true"
-
-TASK_NAME = "content_compliance"
-BENCHMARK = "content_compliance_env"
 
 if not HF_TOKEN:
     print("[ERROR] HF_TOKEN or OPENAI_API_KEY must be set.", flush=True)
     sys.exit(1)
 
-TASK_CONFIGS = {
-    "easy":   {"max_steps": 2, "description": "Binary approve/reject decision"},
-    "medium": {"max_steps": 3, "description": "Edit content to achieve compliance"},
-    "hard":   {"max_steps": 5, "description": "Multi-issue content resolution"},
-}
+BENCHMARK = "content_compliance_env"
+TASK_NAME = "content_compliance"
 
-TEST_CASES = {
-    "easy": [
-        {"id": "easy_001", "is_compliant": True},
-        {"id": "easy_002", "is_compliant": False},
-        {"id": "easy_003", "is_compliant": False},
-    ],
-    "medium": [
-        {"id": "medium_001", "original_score": 0.2, "violations": ["harassment"]},
-        {"id": "medium_002", "original_score": 0.1, "violations": ["spam"]},
-    ],
-    "hard": [
-        {"id": "hard_001", "true_violations": ["hate_speech", "violence", "spam"]},
-    ],
-}
-
-# ── Stdout loggers ────────────────────────────────────────────────────────────
+# ── Log helpers ───────────────────────────────────────────────────────────────
 
 def _fmt(v: float) -> str:
-    return str(int(v)) if v == int(v) else f"{v:.2f}"
+    return str(int(v)) if v == int(v) else f"{v:.3f}"
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -81,10 +56,9 @@ def log_start(task: str, env: str, model: str) -> None:
 
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
-    error_val = error if error else "null"
     print(
         f"[STEP] step={step} action={action} reward={_fmt(reward)} "
-        f"done={str(done).lower()} error={error_val}",
+        f"done={str(done).lower()} error={error if error else 'null'}",
         flush=True,
     )
 
@@ -99,239 +73,159 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
     )
 
 
-# ── Dataclass ─────────────────────────────────────────────────────────────────
+# ── LLM call ─────────────────────────────────────────────────────────────────
 
-@dataclass
-class InferenceResult:
-    task_id: str
-    step_number: int
-    action: str
-    reward: float
-    done: bool
-    explanation: str
+def get_moderation_action(client: OpenAI, content: str, violations: list, step: int) -> str:
+    """Ask the LLM to decide: approve / reject / edit."""
+    try:
+        prompt = (
+            f"You are a content moderator. Analyze this content and respond with ONLY one word: "
+            f"'approve', 'reject', or 'edit'.\n\n"
+            f"Content: {content}\n"
+            f"Detected violations: {violations if violations else 'none'}\n"
+            f"Step: {step}\n\n"
+            f"Rules:\n"
+            f"- If content has clear violations (hate, spam, violence) → reject\n"
+            f"- If content is borderline or fixable → edit\n"
+            f"- If content is clean → approve\n\n"
+            f"Respond with exactly one word:"
+        )
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0.0,
+        )
+        action = response.choices[0].message.content.strip().lower()
+        if action not in {"approve", "reject", "edit"}:
+            action = "reject" if violations else "approve"
+        return action
+    except Exception as exc:
+        print(f"[DEBUG] LLM call failed: {exc}", flush=True)
+        return "reject" if violations else "approve"
 
 
-# ── Inference engine ──────────────────────────────────────────────────────────
+# ── Rule-based evaluator (no extra API calls) ─────────────────────────────────
 
-class ContentComplianceInference:
+def rule_evaluate(content: str) -> tuple[list, float]:
+    """Fast rule-based violation detection. Returns (violations, score)."""
+    c = content.lower()
+    patterns = {
+        "hate_speech":    ["hate", "should all die", "kill all"],
+        "violence":       ["kill", "attack", "hurt", "weapon"],
+        "harassment":     ["idiot", "stupid", "pathetic", "worthless", "ignorant", "delusional"],
+        "misinformation": ["fake news", "conspiracy", "they don't want you to know", "wake up sheeple"],
+        "spam":           ["click here", "buy now", "!!!", "limited time", "free prizes", "visit "],
+        "suspicious_link":["bit.ly", "tinyurl", "linktr.ee"],
+        "engagement_bait":["tag someone", "share if", "🔥", "💰"],
+        "adult_content":  ["explicit", "nsfw", "porn"],
+        "illegal_content":["illegal", "drugs"],
+    }
+    violations = [v for v, kws in patterns.items() if any(k in c for k in kws)]
+    score = max(0.0, round(1.0 - len(violations) * 0.25, 2)) if violations else 0.9
+    return violations, score
 
-    def __init__(self, model_name: str = MODEL_NAME):
-        self.model_name = model_name
-        self.evaluator = OpenAIEvaluator(model=model_name)
-        self.results: list[InferenceResult] = []
-        self.task_scores: dict[str, list[float]] = {"easy": [], "medium": [], "hard": []}
 
-    def _generate_content(self, is_compliant: bool = True, task_id: str = "") -> str:
-        compliant_pool = [
-            "Hello! Welcome to our community platform. Looking forward to connecting!",
-            "Great discussion everyone. Thanks for sharing your thoughts respectfully.",
-            "Looking forward to the upcoming community event this weekend!",
-        ]
-        non_compliant_pool = [
-            "I hate all those people. They should all die! Click here now!!!",
-            "You are such an idiot. Buy now!!! Limited offer, free prizes!!!",
-            "Fake news! Scientists are lying. Kill all who disagree. bit.ly/scam",
-        ]
-        idx = int(hashlib.md5(task_id.encode()).hexdigest(), 16) % 3
-        return compliant_pool[idx] if is_compliant else non_compliant_pool[idx]
+def calc_reward(action: str, violations: list, score: float) -> float:
+    is_compliant = score >= 0.5 and not violations
+    if action == "approve" and is_compliant:
+        return 1.0
+    if action == "reject" and not is_compliant:
+        return 1.0
+    if action == "edit":
+        return 0.5
+    if action == "approve" and not is_compliant:
+        return 0.0   # harmful approval
+    if action == "reject" and is_compliant:
+        return 0.3   # false positive
+    return 0.0
 
-    def _evaluate_content(self, content: str) -> EvaluationResult:
-        result = self.evaluator.evaluate(content)
-        if DEBUG:
-            print(f"[EVAL] source={result.source}, score={result.score:.2f}, violations={result.violations}", flush=True)
-        return result
 
-    def _calculate_reward(
-        self,
-        action: str,
-        expected_action: str,
-        is_compliant: bool,
-        edit_made: bool = False,
-        improvement: float = 0.0,
-        eval_score: float = 0.5,
-    ) -> float:
-        if edit_made:
-            # edit reward: higher when more violations present (more to fix)
-            if improvement > 0:
-                reward = (1 - eval_score) * 0.8
-            else:
-                reward = 0.0  # unnecessary edit
-        elif action == "approve" and is_compliant:
-            reward = eval_score                    # correct approve
-        elif action == "reject" and not is_compliant:
-            reward = 1 - eval_score                # correct reject
-        elif action == "approve" and not is_compliant:
-            reward = eval_score * 0.1              # wrong approve — missed violation
-        elif action == "reject" and is_compliant:
-            reward = (1 - eval_score) * 0.1        # wrong reject — false positive
+# ── Task runners ──────────────────────────────────────────────────────────────
+
+EASY_CASES = [
+    {"id": "easy_001", "content": "Hello! Welcome to our community. Looking forward to connecting!", "is_compliant": True},
+    {"id": "easy_002", "content": "I hate those people. They should all die! Click here now!!!", "is_compliant": False},
+    {"id": "easy_003", "content": "BUY NOW!!! Limited offer!!! Free prizes! bit.ly/scam", "is_compliant": False},
+]
+
+MEDIUM_CASES = [
+    {"id": "medium_001", "content": "Some people are just too ignorant to understand complex topics.", "is_compliant": False},
+    {"id": "medium_002", "content": "Check out this amazing opportunity! bit.ly/opportunity (Not spam, real!)", "is_compliant": False},
+]
+
+HARD_CASES = [
+    {"id": "hard_001", "content": "They don't want you to know the truth! Wake up sheeple! Visit bit.ly/truth. Those people are delusional.", "is_compliant": False},
+]
+
+
+async def run_task(client: OpenAI, task_id: str, content: str, max_steps: int) -> tuple[list, float]:
+    """Run one task episode. Returns (rewards, score)."""
+    rewards: List[float] = []
+    violations, score = rule_evaluate(content)
+    done = False
+    step = 0
+
+    while not done and step < max_steps:
+        step += 1
+        action = get_moderation_action(client, content, violations, step)
+
+        # edit: simulate content improvement
+        if action == "edit":
+            content = content  # in real env agent would provide edited content
+            violations = [v for v in violations if v not in {"spam", "engagement_bait", "suspicious_link"}]
+            score = min(0.9, score + 0.3)
+            reward = calc_reward(action, violations, score)
+            done = False
         else:
-            reward = 0.0
+            reward = calc_reward(action, violations, score)
+            done = True
 
-        return max(0.0, min(1.0, round(reward, 4)))
+        rewards.append(reward)
+        log_step(step=step, action=action, reward=reward, done=done, error=None)
+        time.sleep(0.3)
 
-    async def run_easy_task(self, test_case: dict[str, Any]) -> list[InferenceResult]:
-        task_id = test_case["id"]
-        is_compliant = test_case.get("is_compliant", True)
-        expected_action = "approve" if is_compliant else "reject"
-        content = self._generate_content(is_compliant, task_id=task_id)
-        results = []
-
-        eval_result = self._evaluate_content(content)
-        action = "approve" if eval_result.is_compliant else "reject"
-        reward = self._calculate_reward(action, expected_action, is_compliant, eval_score=eval_result.score)
-
-        results.append(InferenceResult(
-            task_id=task_id, step_number=1, action=action,
-            reward=reward, done=True, explanation=eval_result.reason,
-        ))
-        log_step(step=1, action=action, reward=reward, done=True, error=None)
-        self.task_scores["easy"].append(reward)
-        return results
-
-    async def run_medium_task(self, test_case: dict[str, Any]) -> list[InferenceResult]:
-        task_id = test_case["id"]
-        original_score = test_case.get("original_score", 0.2)
-        results = []
-
-        content = self._generate_content(is_compliant=False, task_id=task_id)
-
-        # Step 1: edit
-        eval_result = self._evaluate_content(content)
-        action = "edit"
-        improvement = min(0.6, 0.3 + len(eval_result.violations) * 0.1)
-        current_score = min(0.9, original_score + improvement)
-        reward = self._calculate_reward(action, "edit", False, edit_made=True, improvement=improvement, eval_score=eval_result.score)
-
-        results.append(InferenceResult(
-            task_id=task_id, step_number=1, action=action,
-            reward=reward, done=False, explanation=eval_result.reason,
-        ))
-        log_step(step=1, action=action, reward=reward, done=False, error=None)
-
-        # Step 2: final decision
-        expected_final = "approve" if current_score >= 0.5 else "reject"
-        final_eval = self._evaluate_content("Edited clean content")
-        final_action = "approve" if final_eval.is_compliant else "reject"
-        final_reward = self._calculate_reward(final_action, expected_final, current_score >= 0.5, eval_score=final_eval.score)
-
-        results.append(InferenceResult(
-            task_id=task_id, step_number=2, action=final_action,
-            reward=final_reward, done=True, explanation=final_eval.reason,
-        ))
-        log_step(step=2, action=final_action, reward=final_reward, done=True, error=None)
-
-        self.task_scores["medium"].append((reward + final_reward) / 2)
-        return results
-
-    async def run_hard_task(self, test_case: dict[str, Any]) -> list[InferenceResult]:
-        task_id = test_case["id"]
-        true_violations = test_case.get("true_violations", [])
-        results = []
-
-        content = self._generate_content(is_compliant=False, task_id=task_id)
-
-        # Step 1: detect
-        eval_result = self._evaluate_content(content)
-        detected = eval_result.violations if eval_result.violations else ["multiple"]
-        true_set = set(true_violations)
-        detection_accuracy = len(true_set & set(detected)) / len(true_set) if true_set else 1.0
-        reward = max(0.0, min(1.0, round(detection_accuracy, 4)))
-        action = f"detect({len(detected)}_violations)"
-
-        results.append(InferenceResult(
-            task_id=task_id, step_number=1, action=action,
-            reward=reward, done=False, explanation=eval_result.reason,
-        ))
-        log_step(step=1, action=action, reward=reward, done=False, error=None)
-
-        # Step 2: edit
-        edit_reward = max(0.0, min(1.0, round((1 - eval_result.score) * 0.8, 4)))
-        results.append(InferenceResult(
-            task_id=task_id, step_number=2, action="edit",
-            reward=edit_reward, done=False, explanation="Edit applied",
-        ))
-        log_step(step=2, action="edit", reward=edit_reward, done=False, error=None)
-
-        # Step 3: final
-        final_eval = self._evaluate_content("Edited content after violations removed")
-        final_action = "approve" if final_eval.is_compliant else "reject"
-        final_reward = max(0.0, min(1.0, round(final_eval.score, 4)))
-
-        results.append(InferenceResult(
-            task_id=task_id, step_number=3, action=final_action,
-            reward=final_reward, done=True, explanation=final_eval.reason,
-        ))
-        log_step(step=3, action=final_action, reward=final_reward, done=True, error=None)
-
-        self.task_scores["hard"].append((reward + edit_reward + final_reward) / 3)
-        return results
-
-    async def run_all_tasks(self) -> dict[str, Any]:
-        start_time = datetime.now()
-        all_results: dict[str, list[InferenceResult]] = {}
-
-        for difficulty, cases in TEST_CASES.items():
-            all_results[difficulty] = []
-            runner = {
-                "easy":   self.run_easy_task,
-                "medium": self.run_medium_task,
-                "hard":   self.run_hard_task,
-            }[difficulty]
-
-            for test_case in cases:
-                task_id = test_case["id"]
-                log_start(task=f"{TASK_NAME}_{task_id}", env=BENCHMARK, model=self.model_name)
-
-                try:
-                    results = await runner(test_case)
-                    all_results[difficulty].extend(results)
-                    rewards_this_task = [r.reward for r in results]
-                    score = max(0.0, min(1.0, round(sum(rewards_this_task) / len(rewards_this_task), 4)))
-                    success = score >= 0.5
-                    log_end(success=success, steps=len(results), score=score, rewards=rewards_this_task)
-
-                except Exception as e:
-                    log_end(success=False, steps=0, score=0.0, rewards=[])
-                    print(f"[DEBUG] Task {task_id} failed: {type(e).__name__}: {e}", flush=True)
-
-                time.sleep(0.5)
-
-        duration = (datetime.now() - start_time).total_seconds()
-        all_scores = [s for v in self.task_scores.values() for s in v]
-
-        return {
-            "total_tasks": sum(len(v) for v in all_results.values()),
-            "total_steps": sum(len(r) for r in all_results.values()),
-            "average_reward": sum(all_scores) / len(all_scores) if all_scores else 0.0,
-            "task_scores": {k: sum(v) / len(v) if v else 0.0 for k, v in self.task_scores.items()},
-            "duration_seconds": duration,
-            "model": self.model_name,
-        }
+    final_score = sum(rewards) / len(rewards) if rewards else 0.0
+    return rewards, final_score
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 async def main() -> None:
-    engine = ContentComplianceInference(model_name=MODEL_NAME)
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
-    try:
-        summary = await engine.run_all_tasks()
-        avg = summary["average_reward"]
-        print(f"\nBaseline average score: {_fmt(avg)} / 1.0", flush=True)
+    all_rewards: List[float] = []
+    all_scores: List[float] = []
 
-        with open("inference_results.json", "w") as f:
-            json.dump({"model": MODEL_NAME, "summary": summary}, f, indent=2)
+    task_groups = [
+        ("easy",   EASY_CASES,   2),
+        ("medium", MEDIUM_CASES, 3),
+        ("hard",   HARD_CASES,   5),
+    ]
 
-        stats = engine.evaluator.stats
-        print(
-            f"[END] Evaluator stats: success_rate={stats['success_rate']:.0%}, "
-            f"openai={stats['openai_success']}, fallback={stats['fallback_used']}",
-            flush=True,
-        )
+    for difficulty, cases, max_steps in task_groups:
+        for case in cases:
+            task_id = case["id"]
+            content = case["content"]
 
-    except Exception as e:
-        print(f"[END] ERROR: {e}", flush=True)
-        raise
+            log_start(task=f"{TASK_NAME}_{task_id}", env=BENCHMARK, model=MODEL_NAME)
+
+            try:
+                rewards, score = await run_task(client, task_id, content, max_steps)
+                success = score >= 0.5
+                all_rewards.extend(rewards)
+                all_scores.append(score)
+                log_end(success=success, steps=len(rewards), score=score, rewards=rewards)
+            except Exception as exc:
+                print(f"[DEBUG] Task {task_id} failed: {exc}", flush=True)
+                log_end(success=False, steps=0, score=0.0, rewards=[])
+
+    overall = sum(all_scores) / len(all_scores) if all_scores else 0.0
+    overall = max(0.0, min(1.0, overall))
+    print(f"\nBaseline average score: {_fmt(overall)} / 1.0", flush=True)
+
+    with open("inference_results.json", "w") as f:
+        json.dump({"model": MODEL_NAME, "average_score": overall, "task_scores": all_scores}, f, indent=2)
 
 
 if __name__ == "__main__":

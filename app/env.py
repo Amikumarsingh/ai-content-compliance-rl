@@ -524,28 +524,21 @@ class ContentComplianceEnv:
         content: str,
         action: str,
     ) -> dict[str, Any]:
-        """Evaluate content using OpenAI evaluator with fallback."""
-        from graders.openai_evaluator import OpenAIEvaluator
+        """Evaluate content using rule-based detector (fast, no API calls)."""
+        from graders.violation_detector import ViolationDetector
 
-        # Use OpenAI evaluator (with automatic fallback if unavailable)
-        evaluator = OpenAIEvaluator(
-            timeout=10.0,  # 10 second timeout
-            max_retries=2,  # Retry up to 2 times
-        )
+        violations = ViolationDetector.detect(content)
+        score = max(0.0, min(1.0, round(1.0 - len(violations) * 0.2, 2))) if violations else 0.9
 
-        result = evaluator.evaluate(content)
-
-        suggestion = ""
-        if result.violations:
-            suggestion = f"Remove: {', '.join(result.violations)}"
+        suggestion = f"Remove: {', '.join(violations)}" if violations else "Content looks clean."
 
         return {
-            "score": result.score,
-            "violations": result.violations,
+            "score": score,
+            "violations": violations,
             "suggestion": suggestion,
-            "reason": result.reason,
-            "confidence": result.confidence,
-            "evaluator_source": result.source,  # "openai" or "fallback"
+            "reason": suggestion,
+            "confidence": 0.85,
+            "evaluator_source": "rule_based",
         }
 
     def _evaluate_edit(
