@@ -105,7 +105,35 @@ def get_moderation_action(client: OpenAI, content: str, violations: list, step: 
         return "reject" if violations else "approve"
 
 
-# ── Rule-based evaluator ──────────────────────────────────────────────────────
+def llm_evaluate(client: OpenAI, content: str) -> tuple[list, float]:
+    """Use OpenAI to evaluate content compliance. Returns (violations, score)."""
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"Evaluate this content for policy violations. "
+                    f"Return JSON only: {{\"violations\": [list], \"score\": 0.0-1.0}}\n"
+                    f"Violation types: hate_speech, violence, harassment, misinformation, spam, "
+                    f"suspicious_link, engagement_bait, adult_content, illegal_content\n"
+                    f"Score: 1.0=fully clean, 0.0=severe violations\n\n"
+                    f"Content: {content}"
+                )
+            }],
+            max_tokens=100,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
+        import json as _json
+        data = _json.loads(response.choices[0].message.content)
+        violations = [v for v in data.get("violations", []) if isinstance(v, str)]
+        score = float(data.get("score", 0.5))
+        score = round(max(0.0, min(1.0, score)), 3)
+        return violations, score
+    except Exception:
+        # Fall back to rule-based
+        return rule_evaluate(content)
 
 # Violations grouped by severity
 SEVERE   = {"hate_speech", "violence", "illegal_content", "adult_content"}
@@ -210,7 +238,8 @@ HARD_CASES = [
 
 async def run_task(client: OpenAI, task_id: str, content: str, max_steps: int) -> tuple[list, float]:
     rewards: List[float] = []
-    violations, score = rule_evaluate(content)
+    # Use LLM to evaluate initial content — genuinely dynamic
+    violations, score = llm_evaluate(client, content)
     done = False
     step = 0
     edited_once = False
@@ -218,7 +247,7 @@ async def run_task(client: OpenAI, task_id: str, content: str, max_steps: int) -
     while not done and step < max_steps:
         step += 1
 
-        # After one edit, force terminal decision based on remaining violations
+        # After one edit, force terminal decision based on re-evaluated violations
         if edited_once:
             action = "approve" if not violations else "reject"
         else:
@@ -226,9 +255,27 @@ async def run_task(client: OpenAI, task_id: str, content: str, max_steps: int) -
 
         if action == "edit" and not edited_once:
             reward = calc_reward(action, violations, score, step)
-            # Remove fixable violations after edit
-            violations = [v for v in violations if v in SEVERE]
-            score = min(0.9, score + 0.4) if not violations else score
+            # Ask LLM to produce a cleaned version of the content
+            try:
+                edit_resp = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=[{
+                        "role": "user",
+                        "content": (
+                            f"Rewrite this content to remove policy violations while keeping the core message.\n"
+                            f"Violations to fix: {', '.join(violations)}\n"
+                            f"Original: {content}\n"
+                            f"Return only the rewritten text, nothing else."
+                        )
+                    }],
+                    max_tokens=150,
+                    temperature=0.3,
+                )
+                content = edit_resp.choices[0].message.content.strip()
+            except Exception:
+                pass  # keep original content if edit fails
+            # Re-evaluate the edited content with LLM
+            violations, score = llm_evaluate(client, content)
             edited_once = True
             done = False
         else:
@@ -237,7 +284,7 @@ async def run_task(client: OpenAI, task_id: str, content: str, max_steps: int) -
 
         rewards.append(reward)
         log_step(step=step, action=action, reward=reward, done=done, error=None)
-        time.sleep(0.3)
+        time.sleep(0.2)
 
     final_score = round(sum(rewards) / len(rewards), 3) if rewards else 0.0
     return rewards, final_score
