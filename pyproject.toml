@@ -9,6 +9,7 @@ description = "OpenEnv content moderation RL environment"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 dependencies = [
+    "openenv-core>=0.2.0",
     "pydantic>=2.0.0",
     "openai>=1.12.0",
     "fastapi>=0.109.0",
@@ -20,8 +21,8 @@ dependencies = [
 ]
 
 [project.scripts]
-serve = "hf_server:main"
+server = "server.app:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*", "graders*", "utils*"]
+include = ["app*", "graders*", "utils*", "server*"]
