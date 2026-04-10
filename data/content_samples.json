@@ -1,0 +1,324 @@
+[
+  {
+    "id": "easy_001",
+    "difficulty": "easy",
+    "content": "Hello! Welcome to our community platform. Looking forward to connecting with everyone here!",
+    "source": "social_media",
+    "category": "welcome_message"
+  },
+  {
+    "id": "easy_002",
+    "difficulty": "easy",
+    "content": "Great discussion everyone. Thanks for sharing your thoughts respectfully.",
+    "source": "forum",
+    "category": "positive_engagement"
+  },
+  {
+    "id": "easy_003",
+    "difficulty": "easy",
+    "content": "I hate those people. They should all die!",
+    "source": "social_media",
+    "category": "hate_speech"
+  },
+  {
+    "id": "easy_004",
+    "difficulty": "easy",
+    "content": "BUY NOW!!! Limited offer!!! Free prizes! bit.ly/scam",
+    "source": "comment",
+    "category": "spam"
+  },
+  {
+    "id": "easy_005",
+    "difficulty": "easy",
+    "content": "Thanks for the helpful information. Very appreciated by the whole community!",
+    "source": "forum",
+    "category": "positive_engagement"
+  },
+  {
+    "id": "easy_006",
+    "difficulty": "easy",
+    "content": "You are such an idiot. Nobody wants to hear your stupid opinions.",
+    "source": "comment",
+    "category": "harassment"
+  },
+  {
+    "id": "easy_007",
+    "difficulty": "easy",
+    "content": "Click here to win $10,000 instantly! Limited time offer! Visit tinyurl.com/win now!",
+    "source": "comment",
+    "category": "spam"
+  },
+  {
+    "id": "easy_008",
+    "difficulty": "easy",
+    "content": "Looking forward to the upcoming community event this weekend. See you all there!",
+    "source": "social_media",
+    "category": "community"
+  },
+  {
+    "id": "easy_009",
+    "difficulty": "easy",
+    "content": "Kill all those worthless people. They deserve to suffer.",
+    "source": "forum",
+    "category": "violence"
+  },
+  {
+    "id": "easy_010",
+    "difficulty": "easy",
+    "content": "Has anyone tried the new coffee shop downtown? The reviews look amazing!",
+    "source": "social_media",
+    "category": "general"
+  },
+  {
+    "id": "easy_011",
+    "difficulty": "easy",
+    "content": "I made $50,000 working just 1 hour a day from home! Visit linktr.ee/rich for the secret!",
+    "source": "comment",
+    "category": "spam"
+  },
+  {
+    "id": "easy_012",
+    "difficulty": "easy",
+    "content": "Congratulations to the team on the successful product launch. Well deserved!",
+    "source": "social_media",
+    "category": "positive_engagement"
+  },
+  {
+    "id": "medium_001",
+    "difficulty": "medium",
+    "content": "Check out this amazing opportunity! bit.ly/opportunity — free tips inside! Not spam, totally real!",
+    "source": "comment",
+    "category": "borderline_spam"
+  },
+  {
+    "id": "medium_002",
+    "difficulty": "medium",
+    "content": "Some people are just too ignorant to understand these complex topics. Sad.",
+    "source": "forum",
+    "category": "subtle_harassment"
+  },
+  {
+    "id": "medium_003",
+    "difficulty": "medium",
+    "content": "Wake up sheeple! Do your own research. They don't want you to know the truth about this.",
+    "source": "social_media",
+    "category": "misinformation"
+  },
+  {
+    "id": "medium_004",
+    "difficulty": "medium",
+    "content": "If you disagree with me, you're probably not educated enough to understand.",
+    "source": "forum",
+    "category": "subtle_harassment"
+  },
+  {
+    "id": "medium_005",
+    "difficulty": "medium",
+    "content": "I'm not saying you should click this link... but if you do: tinyurl.com/maybe — just saying.",
+    "source": "comment",
+    "category": "suspicious_link"
+  },
+  {
+    "id": "medium_006",
+    "difficulty": "medium",
+    "content": "Tag someone who needs to see this! Share if you agree! The truth is out there 💰",
+    "source": "social_media",
+    "category": "engagement_bait"
+  },
+  {
+    "id": "medium_007",
+    "difficulty": "medium",
+    "content": "I feel sorry for people who believe such misguided ideas. So delusional.",
+    "source": "forum",
+    "category": "subtle_harassment"
+  },
+  {
+    "id": "medium_008",
+    "difficulty": "medium",
+    "content": "Exclusive access for the first 50 people only! DM me for details. This is not a drill!",
+    "source": "social_media",
+    "category": "borderline_spam"
+  },
+  {
+    "id": "medium_009",
+    "difficulty": "medium",
+    "content": "Scientists are hiding the real data. Mainstream media won't report this. Wake up!",
+    "source": "forum",
+    "category": "misinformation"
+  },
+  {
+    "id": "medium_010",
+    "difficulty": "medium",
+    "content": "Another day, another person proving my point about how clueless people can be. 🙄",
+    "source": "social_media",
+    "category": "subtle_harassment"
+  },
+  {
+    "id": "medium_011",
+    "difficulty": "medium",
+    "content": "This supplement cured my diabetes in 3 days! Doctors don't want you to know. bit.ly/cure",
+    "source": "comment",
+    "category": "misinformation"
+  },
+  {
+    "id": "medium_012",
+    "difficulty": "medium",
+    "content": "Comment 'INFO' below and I'll send you the link to the exclusive deal! 📩",
+    "source": "social_media",
+    "category": "engagement_bait"
+  },
+  {
+    "id": "medium_013",
+    "difficulty": "medium",
+    "content": "Not to be rude, but if you support that policy you clearly haven't thought it through.",
+    "source": "forum",
+    "category": "subtle_harassment"
+  },
+  {
+    "id": "medium_014",
+    "difficulty": "medium",
+    "content": "Free iPhone giveaway! Like and share this post to enter! Winner announced Friday! 🔥",
+    "source": "social_media",
+    "category": "engagement_bait"
+  },
+  {
+    "id": "hard_001",
+    "difficulty": "hard",
+    "content": "They don't want you to know the truth! Wake up sheeple! Visit bit.ly/truth. Those people are delusional idiots.",
+    "source": "forum",
+    "category": "multi_violation"
+  },
+  {
+    "id": "hard_002",
+    "difficulty": "hard",
+    "content": "Tag someone who needs this!!! Free tips inside — visit linktr.ee/tips for exclusive access. Don't miss out! 💰🔥",
+    "source": "social_media",
+    "category": "multi_violation"
+  },
+  {
+    "id": "hard_003",
+    "difficulty": "hard",
+    "content": "Our platform prohibits harassment. Please review the community guidelines before posting.",
+    "source": "official",
+    "category": "clean_formal"
+  },
+  {
+    "id": "hard_004",
+    "difficulty": "hard",
+    "content": "You know which people I'm talking about. They're ruining everything. Do your research! bit.ly/truth",
+    "source": "social_media",
+    "category": "coded_hate"
+  },
+  {
+    "id": "hard_005",
+    "difficulty": "hard",
+    "content": "Some groups just don't fit in with our values. Just saying. You know what I mean. 😉",
+    "source": "forum",
+    "category": "coded_hate"
+  },
+  {
+    "id": "hard_006",
+    "difficulty": "hard",
+    "content": "The government is manipulating the data. Wake up! Share this before they delete it! tinyurl.com/proof 🔥",
+    "source": "social_media",
+    "category": "multi_violation"
+  },
+  {
+    "id": "hard_007",
+    "difficulty": "hard",
+    "content": "I disagree with this policy direction. Here are three specific reasons why it may not work as intended.",
+    "source": "forum",
+    "category": "clean_opinion"
+  },
+  {
+    "id": "hard_008",
+    "difficulty": "hard",
+    "content": "These pathetic losers keep spreading fake news. They should be removed from the platform immediately!",
+    "source": "comment",
+    "category": "multi_violation"
+  },
+  {
+    "id": "hard_009",
+    "difficulty": "hard",
+    "content": "Unpopular opinion: this feature is actually making the platform worse. Here's my detailed analysis.",
+    "source": "forum",
+    "category": "clean_opinion"
+  },
+  {
+    "id": "hard_010",
+    "difficulty": "hard",
+    "content": "They're hiding the truth about vaccines. Do your own research! Visit bit.ly/realtruth — share before deleted!",
+    "source": "social_media",
+    "category": "multi_violation"
+  },
+  {
+    "id": "hard_011",
+    "difficulty": "hard",
+    "content": "I've been researching this topic for months and found some genuinely concerning patterns worth discussing.",
+    "source": "forum",
+    "category": "clean_opinion"
+  },
+  {
+    "id": "hard_012",
+    "difficulty": "hard",
+    "content": "Those people are delusional and should be removed. Don't believe their conspiracy lies! Tag everyone! 💰",
+    "source": "social_media",
+    "category": "multi_violation"
+  },
+  {
+    "id": "hard_013",
+    "difficulty": "hard",
+    "content": "Has anyone else noticed how the algorithm seems to suppress certain viewpoints? Genuinely curious.",
+    "source": "forum",
+    "category": "clean_opinion"
+  },
+  {
+    "id": "hard_014",
+    "difficulty": "hard",
+    "content": "Stupid idiots keep buying this garbage. Click here now!!! bit.ly/deal — limited time FREE offer!!!",
+    "source": "comment",
+    "category": "multi_violation"
+  },
+  {
+    "id": "hard_015",
+    "difficulty": "hard",
+    "content": "I strongly disagree with the moderation decision here. The content seemed within guidelines to me.",
+    "source": "forum",
+    "category": "clean_opinion"
+  },
+  {
+    "id": "hard_016",
+    "difficulty": "hard",
+    "content": "Award-winning journalist exposes illegal drugs ring operating through this platform. Full story: linktr.ee/expose",
+    "source": "social_media",
+    "category": "ambiguous"
+  },
+  {
+    "id": "hard_017",
+    "difficulty": "hard",
+    "content": "This is satire, but seriously — if you still believe that, I genuinely feel sorry for your intelligence.",
+    "source": "forum",
+    "category": "ambiguous"
+  },
+  {
+    "id": "hard_018",
+    "difficulty": "hard",
+    "content": "Not going to name names, but certain people in this community have been making it toxic. You know who you are.",
+    "source": "social_media",
+    "category": "ambiguous"
+  },
+  {
+    "id": "hard_019",
+    "difficulty": "hard",
+    "content": "The data clearly shows a 40% improvement. Anyone claiming otherwise is either lying or hasn't read the report.",
+    "source": "forum",
+    "category": "ambiguous"
+  },
+  {
+    "id": "hard_020",
+    "difficulty": "hard",
+    "content": "Breaking: new study proves everything you thought you knew about this topic is wrong. Share now! bit.ly/study",
+    "source": "social_media",
+    "category": "ambiguous"
+  }
+]

@@ -1,11 +1,28 @@
-"""Server entry point — delegates to hf_server."""
+"""
+Server entry point — uses openenv-core create_app for full spec compliance.
+"""
 import os
-import uvicorn
-from hf_server import app
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+from openenv.core.env_server.http_server import create_app
+from models import ContentAction, ContentObservation
+from environment import ContentComplianceEnvironment
+
+app = create_app(
+    ContentComplianceEnvironment,
+    ContentAction,
+    ContentObservation,
+    env_name="content_compliance_env",
+    max_concurrent_envs=4,
+)
 
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "7860")))
+    import uvicorn
+    port = int(os.getenv("PORT", "7860"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
