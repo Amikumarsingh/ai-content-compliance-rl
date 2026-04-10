@@ -154,42 +154,61 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 # ── LLM helpers ───────────────────────────────────────────────────────────────
 
 def llm_detect_violations(client: OpenAI, content: str) -> list:
-    """Ask LLM to detect violations in content."""
+    """Ask LLM to detect violations. Returns list of violation type strings."""
     try:
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[{"role": "user", "content": (
-                f"{TASK_DESCRIPTIONS[1]}\n\n"
+                "You are a content moderation expert. "
+                "Analyze the content below and identify ALL policy violations present.\n\n"
+                "Violation types (use exact names):\n"
+                "  hate_speech, violence, harassment, adult_content,\n"
+                "  misinformation, spam, suspicious_link, engagement_bait, illegal_content\n\n"
                 f"Content: {content}\n\n"
-                f"Return a JSON array of violation types found, or [] if none.\n"
-                f"Example: [\"spam\", \"suspicious_link\"] or []"
+                "Return JSON with key 'violations' as a list. "
+                "Example: {\"violations\": [\"spam\", \"suspicious_link\"]}\n"
+                "If no violations: {\"violations\": []}"
             )}],
-            max_tokens=60,
+            max_tokens=80,
             temperature=0.0,
             response_format={"type": "json_object"},
         )
         import json as _j
         data = _j.loads(response.choices[0].message.content)
-        # handle both {"violations": [...]} and direct array
-        if isinstance(data, list):
-            return data
-        return data.get("violations", [])
+        violations = data.get("violations", [])
+        if not isinstance(violations, list):
+            violations = []
+        # Filter to valid violation types only
+        valid = {"hate_speech", "violence", "harassment", "adult_content",
+                 "misinformation", "spam", "suspicious_link", "engagement_bait", "illegal_content"}
+        return [v for v in violations if v in valid]
     except Exception as exc:
         print(f"[DEBUG] llm_detect_violations failed: {exc}", flush=True)
         return []
 
 
 def llm_score_compliance(client: OpenAI, content: str, violations: list) -> float:
-    """Ask LLM to score content compliance."""
+    """Ask LLM to score content compliance 0.0-1.0."""
     try:
         viol_str = ", ".join(violations) if violations else "none"
+        # Determine expected range based on violations
+        if not violations:
+            hint = "No violations found. Score should be 0.8 to 1.0."
+        elif any(v in {"hate_speech", "violence", "illegal_content"} for v in violations):
+            hint = "Severe violations present. Score should be 0.0 to 0.3."
+        elif any(v in {"harassment", "misinformation"} for v in violations):
+            hint = "Moderate violations present. Score should be 0.2 to 0.5."
+        else:
+            hint = "Minor violations present. Score should be 0.4 to 0.7."
+
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[{"role": "user", "content": (
-                f"{TASK_DESCRIPTIONS[2]}\n\n"
+                f"Rate this content's policy compliance from 0.0 (worst) to 1.0 (clean).\n"
                 f"Content: {content}\n"
-                f"Detected violations: {viol_str}\n\n"
-                f"Return JSON: {{\"score\": <float 0.0-1.0>}}"
+                f"Detected violations: {viol_str}\n"
+                f"{hint}\n\n"
+                f"Return JSON: {{\"score\": <float>}}"
             )}],
             max_tokens=20,
             temperature=0.0,
@@ -200,7 +219,11 @@ def llm_score_compliance(client: OpenAI, content: str, violations: list) -> floa
         return round(max(0.0, min(1.0, float(data.get("score", 0.5)))), 3)
     except Exception as exc:
         print(f"[DEBUG] llm_score_compliance failed: {exc}", flush=True)
-        return 0.5 if not violations else 0.2
+        # Fallback: derive score from violations
+        if not violations:
+            return 0.9
+        severe = sum(1 for v in violations if v in {"hate_speech", "violence", "illegal_content"})
+        return round(max(0.05, 0.9 - severe * 0.35 - (len(violations) - severe) * 0.15), 2)
 
 
 def llm_decide(client: OpenAI, content: str, violations: list, step_desc: str) -> str:
