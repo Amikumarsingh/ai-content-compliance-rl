@@ -29,6 +29,10 @@ try:
 except ImportError:
     pass
 
+import socket
+import threading
+import urllib.request
+
 from openai import OpenAI
 from client import ContentComplianceEnvClient
 from models import ContentAction
@@ -39,10 +43,50 @@ API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN     = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
 ENV_URL      = os.getenv("ENV_URL", "ws://localhost:7860")
+SERVER_PORT  = 7860
 
 if not HF_TOKEN:
     print("[ERROR] HF_TOKEN or OPENAI_API_KEY must be set.", flush=True)
     sys.exit(1)
+
+# ── Server lifecycle ──────────────────────────────────────────────────────────
+
+def _is_port_open(port: int) -> bool:
+    """Check if something is already listening on the port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(1)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def _start_server_background() -> None:
+    """Start uvicorn server in a daemon thread."""
+    import uvicorn
+    from server.app import app as _app
+    uvicorn.run(_app, host="0.0.0.0", port=SERVER_PORT, log_level="error")
+
+
+def _ensure_server_running() -> None:
+    """Start server if not already running, wait until ready."""
+    if _is_port_open(SERVER_PORT):
+        print(f"[DEBUG] Server already running on port {SERVER_PORT}", flush=True)
+        return
+
+    print(f"[DEBUG] Starting server on port {SERVER_PORT}...", flush=True)
+    t = threading.Thread(target=_start_server_background, daemon=True)
+    t.start()
+
+    # Wait up to 30s for server to be ready
+    for _ in range(30):
+        time.sleep(1)
+        if _is_port_open(SERVER_PORT):
+            try:
+                urllib.request.urlopen(f"http://localhost:{SERVER_PORT}/health", timeout=2)
+                print(f"[DEBUG] Server ready.", flush=True)
+                return
+            except Exception:
+                pass
+
+    raise RuntimeError(f"Server failed to start on port {SERVER_PORT} within 30s")
 
 BENCHMARK = "content_compliance_env"
 TASK_NAME = "content_compliance"
@@ -109,6 +153,56 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 
 # ── LLM helpers ───────────────────────────────────────────────────────────────
 
+def llm_detect_violations(client: OpenAI, content: str) -> list:
+    """Ask LLM to detect violations in content."""
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": (
+                f"{TASK_DESCRIPTIONS[1]}\n\n"
+                f"Content: {content}\n\n"
+                f"Return a JSON array of violation types found, or [] if none.\n"
+                f"Example: [\"spam\", \"suspicious_link\"] or []"
+            )}],
+            max_tokens=60,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
+        import json as _j
+        data = _j.loads(response.choices[0].message.content)
+        # handle both {"violations": [...]} and direct array
+        if isinstance(data, list):
+            return data
+        return data.get("violations", [])
+    except Exception as exc:
+        print(f"[DEBUG] llm_detect_violations failed: {exc}", flush=True)
+        return []
+
+
+def llm_score_compliance(client: OpenAI, content: str, violations: list) -> float:
+    """Ask LLM to score content compliance."""
+    try:
+        viol_str = ", ".join(violations) if violations else "none"
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": (
+                f"{TASK_DESCRIPTIONS[2]}\n\n"
+                f"Content: {content}\n"
+                f"Detected violations: {viol_str}\n\n"
+                f"Return JSON: {{\"score\": <float 0.0-1.0>}}"
+            )}],
+            max_tokens=20,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
+        import json as _j
+        data = _j.loads(response.choices[0].message.content)
+        return round(max(0.0, min(1.0, float(data.get("score", 0.5)))), 3)
+    except Exception as exc:
+        print(f"[DEBUG] llm_score_compliance failed: {exc}", flush=True)
+        return 0.5 if not violations else 0.2
+
+
 def llm_decide(client: OpenAI, content: str, violations: list, step_desc: str) -> str:
     """Ask LLM to make moderation decision using step description."""
     try:
@@ -164,43 +258,62 @@ async def run_episode(
     # Reset environment
     result = await env.reset()
     obs = result.observation
+    content = obs.content
 
-    for step_num in range(1, 5):
-        content    = obs.content
-        violations = obs.violations
-        score      = obs.compliance_score
-        done       = obs.done
+    # Step 1: LLM detects violations
+    detected_violations = llm_detect_violations(llm, content)
+    action = ContentAction(
+        action_type="detect_violations",
+        metadata={"violations": detected_violations}
+    )
+    result = await env.step(action)
+    obs = result.observation
+    reward = float(result.reward) if result.reward is not None else 0.05
+    reward = max(0.01, min(0.99, reward))
+    rewards.append(reward)
+    log_step(step=1, action=f"detect({len(detected_violations)}_violations)", reward=reward, done=obs.done, error=None)
+    time.sleep(0.2)
 
-        # Determine action for this step
-        if step_num == 1:
-            action_type = "detect_violations"
-        elif step_num == 2:
-            action_type = "score_compliance"
-        elif step_num == 3:
-            action_type = llm_decide(llm, content, violations, TASK_DESCRIPTIONS[3])
-        else:
-            if violations:
-                action_type = "submit_edit"
-            else:
-                action_type = f"confirm_{obs.stage}"
+    # Step 2: LLM scores compliance
+    predicted_score = llm_score_compliance(llm, content, detected_violations)
+    action = ContentAction(
+        action_type="score_compliance",
+        metadata={"score": predicted_score}
+    )
+    result = await env.step(action)
+    obs = result.observation
+    reward = float(result.reward) if result.reward is not None else 0.05
+    reward = max(0.01, min(0.99, reward))
+    rewards.append(reward)
+    log_step(step=2, action=f"score({predicted_score})", reward=reward, done=obs.done, error=None)
+    time.sleep(0.2)
 
-        # Build edited content for step 4 if needed
-        edited = None
-        if step_num == 4 and action_type == "submit_edit":
-            edited = llm_rewrite(llm, content, violations, TASK_DESCRIPTIONS[4])
+    # Step 3: LLM decides action
+    decision = llm_decide(llm, content, detected_violations, TASK_DESCRIPTIONS[3])
+    action = ContentAction(action_type=decision)
+    result = await env.step(action)
+    obs = result.observation
+    reward = float(result.reward) if result.reward is not None else 0.05
+    reward = max(0.01, min(0.99, reward))
+    rewards.append(reward)
+    log_step(step=3, action=decision, reward=reward, done=obs.done, error=None)
+    time.sleep(0.2)
 
-        action = ContentAction(action_type=action_type, edited_content=edited)
-        result = await env.step(action)
-        obs    = result.observation
-        reward = float(obs.reward) if obs.reward is not None else 0.05
-        reward = max(0.01, min(0.99, reward))
+    # Step 4: confirm or edit
+    if decision == "edit":
+        edited = llm_rewrite(llm, content, detected_violations, TASK_DESCRIPTIONS[4])
+        action = ContentAction(action_type="submit_edit", edited_content=edited)
+        step4_label = "submit_edit"
+    else:
+        action = ContentAction(action_type=f"confirm_{decision}")
+        step4_label = f"confirm_{decision}"
 
-        rewards.append(reward)
-        log_step(step=step_num, action=action_type, reward=reward, done=obs.done, error=None)
-        time.sleep(0.2)
-
-        if obs.done:
-            break
+    result = await env.step(action)
+    obs = result.observation
+    reward = float(result.reward) if result.reward is not None else 0.05
+    reward = max(0.01, min(0.99, reward))
+    rewards.append(reward)
+    log_step(step=4, action=step4_label, reward=reward, done=obs.done, error=None)
 
     avg = round(sum(rewards) / len(rewards), 3) if rewards else 0.05
     return rewards, avg
@@ -220,6 +333,7 @@ EPISODES = [
 
 
 async def main() -> None:
+    _ensure_server_running()
     llm = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
     all_scores: List[float] = []
 

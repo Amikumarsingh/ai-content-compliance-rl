@@ -1,0 +1,11 @@
+RESET: 200
+content: Kill all those worthless people. They deserve to suffer.
+
+STEP 1: status=200 reward=0.01 done=False
+  feedback: Detected: ['harassment']. GT has 1 violation(s). Now score compliance.
+STEP 2: status=200 reward=0.01 done=False
+  feedback: Detected: none. GT has 2 violation(s). Now score compliance.
+STEP 3: status=200 reward=0.99 done=False
+  feedback: Detected: none. GT has 0 violation(s). Now score compliance.
+STEP 4: status=200 reward=0.01 done=False
+  feedback: Detected: none. GT has 1 violation(s). Now score compliance.

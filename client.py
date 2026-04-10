@@ -16,8 +16,10 @@ class ContentComplianceEnvClient(EnvClient[ContentAction, ContentObservation, Di
         return action.model_dump()
 
     def _parse_result(self, payload: Dict[str, Any]) -> StepResult[ContentObservation]:
+        # OpenEnv server returns: {"observation": {...}, "reward": float, "done": bool}
         obs_data = payload.get("observation", payload)
-        # Build ContentObservation from payload, with safe defaults
+        reward   = payload.get("reward") or obs_data.get("reward")
+        done     = payload.get("done", obs_data.get("done", False))
         obs = ContentObservation(
             content=obs_data.get("content", ""),
             violations=obs_data.get("violations", []),
@@ -26,14 +28,10 @@ class ContentComplianceEnvClient(EnvClient[ContentAction, ContentObservation, Di
             step_count=obs_data.get("step_count", 0),
             task_description=obs_data.get("task_description", ""),
             feedback=obs_data.get("feedback", ""),
-            done=obs_data.get("done", False),
-            reward=obs_data.get("reward"),
+            done=done,
+            reward=reward,
         )
-        return StepResult(
-            observation=obs,
-            reward=obs_data.get("reward"),
-            done=obs_data.get("done", False),
-        )
+        return StepResult(observation=obs, reward=reward, done=done)
 
     def _parse_state(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return payload
