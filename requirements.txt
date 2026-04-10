@@ -1,16 +1,22 @@
-# Content Moderation RL Environment - Dependencies
+# Content Compliance RL Environment - Dependencies
+
+# OpenEnv core (required for create_app, Environment base class, EnvClient)
+openenv-core>=0.2.0
 
 # Core
 pydantic>=2.0.0
 numpy>=1.24.0
 
-# OpenAI API (mandatory - used directly in inference.py)
+# OpenAI API
 openai>=1.12.0
 
 # Web server
 fastapi>=0.109.0
 uvicorn>=0.27.0
 python-dotenv>=1.0.0
+
+# WebSocket client (used by EnvClient)
+websockets>=12.0
 
 # HTTP client
 httpx>=0.26.0
