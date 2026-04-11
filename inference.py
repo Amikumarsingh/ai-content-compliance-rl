@@ -42,7 +42,8 @@ from models import ContentAction
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN     = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
-ENV_URL      = os.getenv("ENV_URL", "ws://localhost:7860")
+ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
+ENV_URL      = ENV_BASE_URL.replace("https://", "wss://").replace("http://", "ws://")
 SERVER_PORT  = 7860
 
 if not HF_TOKEN:
@@ -66,16 +67,20 @@ def _start_server_background() -> None:
 
 
 def _ensure_server_running() -> None:
-    """Start server if not already running, wait until ready."""
+    """Start local server only if ENV_BASE_URL points to localhost."""
+    is_local = "localhost" in ENV_BASE_URL or "127.0.0.1" in ENV_BASE_URL
+    if not is_local:
+        print(f"[DEBUG] Using remote env: {ENV_BASE_URL}", flush=True)
+        return
+
     if _is_port_open(SERVER_PORT):
         print(f"[DEBUG] Server already running on port {SERVER_PORT}", flush=True)
         return
 
-    print(f"[DEBUG] Starting server on port {SERVER_PORT}...", flush=True)
+    print(f"[DEBUG] Starting local server on port {SERVER_PORT}...", flush=True)
     t = threading.Thread(target=_start_server_background, daemon=True)
     t.start()
 
-    # Wait up to 30s for server to be ready
     for _ in range(30):
         time.sleep(1)
         if _is_port_open(SERVER_PORT):

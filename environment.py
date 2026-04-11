@@ -365,7 +365,7 @@ class ContentComplianceEnvironment(Environment):
                 f"Content loaded. Begin with violation detection."
             ),
             done=False,
-            reward=None,
+            reward=0.001,
         )
 
     def step(self, action: ContentAction, timeout_s: Optional[float] = None, **kwargs: Any) -> ContentObservation:
