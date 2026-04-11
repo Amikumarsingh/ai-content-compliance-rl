@@ -196,8 +196,10 @@ async def step(request: Request):
 
     action_type = body.get("action_type", "approve")
     edited_content = body.get("edited_content")
+    metadata = body.get("metadata", {})
 
-    valid_actions = {"approve", "reject", "edit"}
+    valid_actions = {"approve", "reject", "edit", "detect_violations",
+                     "score_compliance", "submit_edit", "confirm_approve", "confirm_reject"}
     if action_type not in valid_actions:
         action_type = "approve"
 
@@ -207,6 +209,7 @@ async def step(request: Request):
         action = Action(
             action_type=action_type,
             edited_content=edited_content,
+            metadata=metadata,
         )
 
         result = await app.state.env.step(action)

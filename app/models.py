@@ -78,34 +78,34 @@ class Observation(BaseModel):
 
 
 class Action(BaseModel):
-    """
-    Action taken in the content compliance environment.
-
-    Attributes:
-        action_type: Type of action ("approve", "reject", or "edit").
-        edited_content: Optional edited content if action_type is "edit".
-    """
-
     action_type: str = Field(
         ...,
-        description="Type of action: 'approve', 'reject', or 'edit'"
+        description="Type of action: 'approve', 'reject', 'edit', 'detect_violations', 'score_compliance', etc."
     )
     edited_content: Optional[str] = Field(
         default=None,
-        description="Edited content (required if action_type is 'edit')"
+        description="Edited content (required if action_type is 'edit' or 'submit_edit')"
+    )
+    metadata: dict = Field(
+        default_factory=dict,
+        description="Additional data: violations list, compliance score, etc."
     )
 
     @field_validator("action_type")
     @classmethod
     def validate_action_type(cls, v: str) -> str:
-        """Ensure action_type is valid."""
-        valid_types = {"approve", "reject", "edit"}
-        if v.lower() not in valid_types:
-            raise ValueError(f"action_type must be one of {valid_types}, got '{v}'")
-        return v.lower()
+        valid_types = {
+            "approve", "reject", "edit",
+            "detect_violations", "score_compliance",
+            "submit_edit", "confirm_approve", "confirm_reject",
+        }
+        v = v.lower().strip()
+        if v not in valid_types:
+            # Accept unknown types gracefully instead of raising
+            return v
+        return v
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
         return self.model_dump()
 
 

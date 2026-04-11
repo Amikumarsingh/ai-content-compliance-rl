@@ -59,18 +59,29 @@ ALL_VIOLATIONS = list(SEVERE | MODERATE | MINOR)
 
 # Precise multi-word patterns only — avoids false positives from single words
 _VIOLATION_PATTERNS = {
-    "hate_speech":    ["should all die", "kill all", "i hate those", "they should die"],
-    "violence":       ["kill them", "attack them", "hurt people", "weapon of"],
+    "hate_speech":    ["should all die", "kill all", "i hate those", "they should die",
+                       "hate those people", "hate all", "i hate those people"],
+    "violence":       ["kill them", "attack them", "hurt people", "weapon of",
+                       "deserve to suffer", "kill all those", "should all die"],
     "harassment":     ["you are an idiot", "you are stupid", "you are pathetic",
-                       "you are worthless", "too ignorant to", "so delusional"],
+                       "you are worthless", "too ignorant to", "so delusional",
+                       "not educated enough", "feel sorry for people", "clueless people",
+                       "pathetic losers", "feel sorry for your", "such an idiot",
+                       "stupid opinions", "nobody wants to hear"],
     "misinformation": ["fake news", "they don't want you to know", "wake up sheeple",
-                       "mainstream media won't", "scientists are hiding"],
+                       "mainstream media won't", "scientists are hiding",
+                       "do your own research", "hiding the truth", "hiding the real",
+                       "proves everything you thought", "manipulating the data"],
     "spam":           ["click here", "buy now", "limited time offer", "free prizes",
-                       "free tips inside", "act now", "win $"],
+                       "free tips inside", "act now", "win $", "free iphone",
+                       "free tips", "exclusive access", "exclusive deal"],
     "suspicious_link":["bit.ly/", "tinyurl.com/", "linktr.ee/"],
-    "engagement_bait":["tag someone who", "share if you", "comment below and i"],
+    "engagement_bait":["tag someone who", "share if you", "comment below and i",
+                       "comment 'info'", "like and share", "share this before",
+                       "share now"],
     "adult_content":  ["explicit content", "nsfw", "dm for pics"],
-    "illegal_content":["buy illegal", "sell drugs", "illegal weapons"],
+    "illegal_content":["buy illegal", "sell drugs", "illegal weapons",
+                       "illegal drugs ring"],
 }
 
 # -- Difficulty-aware grading parameters --------------------------------------
