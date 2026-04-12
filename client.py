@@ -18,7 +18,8 @@ class ContentComplianceEnvClient(EnvClient[ContentAction, ContentObservation, Di
     def _parse_result(self, payload: Dict[str, Any]) -> StepResult[ContentObservation]:
         # OpenEnv server returns: {"observation": {...}, "reward": float, "done": bool}
         obs_data = payload.get("observation", payload)
-        reward   = payload.get("reward") or obs_data.get("reward")
+        _r_top   = payload.get("reward")
+        reward   = _r_top if _r_top is not None else obs_data.get("reward")
         done     = payload.get("done", obs_data.get("done", False))
         obs = ContentObservation(
             content=obs_data.get("content", ""),

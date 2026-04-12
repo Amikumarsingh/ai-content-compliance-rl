@@ -320,5 +320,225 @@
     "correct_action": "reject",
     "difficulty": "hard",
     "reward_weights": { "detect": 0.30, "score": 0.15, "decide": 0.35, "confirm": 0.20 }
-  }
+  },
+
+  "easy_013": {
+    "violations": ["adult_content"],
+    "compliance_score": 0.05,
+    "correct_action": "reject",
+    "difficulty": "easy",
+    "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 }
+  },
+  "easy_014": {
+    "violations": ["illegal_content"],
+    "compliance_score": 0.05,
+    "correct_action": "reject",
+    "difficulty": "easy",
+    "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 }
+  },
+  "easy_015": {
+    "violations": [],
+    "compliance_score": 0.95,
+    "correct_action": "approve",
+    "difficulty": "easy",
+    "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 }
+  },
+  "easy_016": {
+    "violations": [],
+    "compliance_score": 0.90,
+    "correct_action": "approve",
+    "difficulty": "easy",
+    "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 }
+  },
+
+  "medium_015": {
+    "violations": ["spam", "suspicious_link"],
+    "compliance_score": 0.35,
+    "correct_action": "edit",
+    "difficulty": "medium",
+    "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 }
+  },
+  "medium_016": {
+    "violations": ["hate_speech"],
+    "compliance_score": 0.30,
+    "correct_action": "edit",
+    "difficulty": "medium",
+    "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 }
+  },
+  "medium_017": {
+    "violations": ["harassment"],
+    "compliance_score": 0.40,
+    "correct_action": "edit",
+    "difficulty": "medium",
+    "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 }
+  },
+  "medium_018": {
+    "violations": ["misinformation", "suspicious_link"],
+    "compliance_score": 0.20,
+    "correct_action": "reject",
+    "difficulty": "medium",
+    "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 }
+  },
+  "medium_019": {
+    "violations": ["engagement_bait"],
+    "compliance_score": 0.40,
+    "correct_action": "edit",
+    "difficulty": "medium",
+    "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 }
+  },
+  "medium_020": {
+    "violations": ["misinformation"],
+    "compliance_score": 0.20,
+    "correct_action": "reject",
+    "difficulty": "medium",
+    "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 }
+  },
+
+  "hard_021": {
+    "violations": ["harassment", "engagement_bait"],
+    "compliance_score": 0.20,
+    "correct_action": "reject",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.30, "score": 0.15, "decide": 0.35, "confirm": 0.20 }
+  },
+  "hard_022": {
+    "violations": ["violence"],
+    "compliance_score": 0.25,
+    "correct_action": "edit",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 }
+  },
+  "hard_023": {
+    "violations": ["misinformation", "engagement_bait", "suspicious_link"],
+    "compliance_score": 0.10,
+    "correct_action": "reject",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.30, "score": 0.15, "decide": 0.35, "confirm": 0.20 }
+  },
+  "hard_024": {
+    "violations": [],
+    "compliance_score": 0.95,
+    "correct_action": "approve",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 }
+  },
+  "hard_025": {
+    "violations": ["adult_content", "spam", "suspicious_link"],
+    "compliance_score": 0.05,
+    "correct_action": "reject",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.30, "score": 0.15, "decide": 0.35, "confirm": 0.20 }
+  },
+  "hard_026": {
+    "violations": ["harassment", "misinformation", "suspicious_link"],
+    "compliance_score": 0.10,
+    "correct_action": "reject",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.30, "score": 0.15, "decide": 0.35, "confirm": 0.20 }
+  },
+  "hard_027": {
+    "violations": [],
+    "compliance_score": 0.90,
+    "correct_action": "approve",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 }
+  },
+  "hard_028": {
+    "violations": ["harassment"],
+    "compliance_score": 0.35,
+    "correct_action": "edit",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 }
+  },
+  "hard_029": {
+    "violations": ["illegal_content", "spam", "suspicious_link"],
+    "compliance_score": 0.05,
+    "correct_action": "reject",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.30, "score": 0.15, "decide": 0.35, "confirm": 0.20 }
+  },
+  "hard_030": {
+    "violations": [],
+    "compliance_score": 0.80,
+    "correct_action": "approve",
+    "difficulty": "hard",
+    "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 }
+  },
+
+  "easy_017": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_018": { "violations": ["spam", "suspicious_link"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_019": { "violations": ["violence"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_020": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_021": { "violations": ["hate_speech", "violence"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_022": { "violations": ["spam", "suspicious_link"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_023": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_024": { "violations": ["adult_content"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_025": { "violations": ["illegal_content"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_026": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_027": { "violations": ["harassment"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_028": { "violations": ["spam", "suspicious_link"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_029": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_030": { "violations": ["hate_speech", "violence"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_031": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_032": { "violations": ["illegal_content"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_033": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_034": { "violations": ["violence"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_035": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_036": { "violations": ["spam", "suspicious_link"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_037": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_038": { "violations": ["harassment"], "compliance_score": 0.10, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+  "easy_039": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "easy", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "easy_040": { "violations": ["hate_speech", "violence"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "easy", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.35, "confirm": 0.15 } },
+
+  "medium_021": { "violations": ["harassment"], "compliance_score": 0.40, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_022": { "violations": ["spam", "suspicious_link"], "compliance_score": 0.25, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_023": { "violations": ["misinformation"], "compliance_score": 0.20, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_024": { "violations": ["engagement_bait"], "compliance_score": 0.40, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_025": { "violations": ["harassment"], "compliance_score": 0.35, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_026": { "violations": ["misinformation", "suspicious_link"], "compliance_score": 0.15, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_027": { "violations": ["hate_speech"], "compliance_score": 0.30, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_028": { "violations": ["engagement_bait"], "compliance_score": 0.35, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_029": { "violations": ["misinformation"], "compliance_score": 0.15, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_030": { "violations": ["harassment"], "compliance_score": 0.40, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_031": { "violations": ["spam", "suspicious_link"], "compliance_score": 0.30, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_032": { "violations": ["misinformation"], "compliance_score": 0.25, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_033": { "violations": ["engagement_bait"], "compliance_score": 0.35, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_034": { "violations": ["harassment"], "compliance_score": 0.35, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_035": { "violations": ["misinformation"], "compliance_score": 0.20, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_036": { "violations": ["hate_speech"], "compliance_score": 0.25, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_037": { "violations": ["spam"], "compliance_score": 0.45, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_038": { "violations": ["misinformation"], "compliance_score": 0.10, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_039": { "violations": ["harassment"], "compliance_score": 0.40, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_040": { "violations": ["engagement_bait"], "compliance_score": 0.30, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_041": { "violations": ["hate_speech"], "compliance_score": 0.15, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_042": { "violations": ["spam"], "compliance_score": 0.35, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_043": { "violations": ["misinformation"], "compliance_score": 0.10, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_044": { "violations": ["engagement_bait"], "compliance_score": 0.35, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_045": { "violations": ["harassment"], "compliance_score": 0.35, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_046": { "violations": ["misinformation"], "compliance_score": 0.15, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_047": { "violations": ["harassment"], "compliance_score": 0.40, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_048": { "violations": ["spam", "suspicious_link"], "compliance_score": 0.30, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "medium_049": { "violations": ["misinformation"], "compliance_score": 0.05, "correct_action": "reject", "difficulty": "medium", "reward_weights": { "detect": 0.30, "score": 0.20, "decide": 0.30, "confirm": 0.20 } },
+  "medium_050": { "violations": ["engagement_bait"], "compliance_score": 0.30, "correct_action": "edit", "difficulty": "medium", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+
+  "hard_031": { "violations": ["violence"], "compliance_score": 0.20, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "hard_032": { "violations": [], "compliance_score": 0.85, "correct_action": "approve", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "hard_033": { "violations": [], "compliance_score": 0.75, "correct_action": "approve", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "hard_034": { "violations": ["harassment"], "compliance_score": 0.30, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "hard_035": { "violations": ["misinformation"], "compliance_score": 0.30, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "hard_036": { "violations": ["suspicious_link"], "compliance_score": 0.60, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "hard_037": { "violations": [], "compliance_score": 0.75, "correct_action": "approve", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "hard_038": { "violations": ["hate_speech"], "compliance_score": 0.20, "correct_action": "reject", "difficulty": "hard", "reward_weights": { "detect": 0.30, "score": 0.15, "decide": 0.35, "confirm": 0.20 } },
+  "hard_039": { "violations": ["harassment"], "compliance_score": 0.35, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "hard_040": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "hard_041": { "violations": ["violence"], "compliance_score": 0.25, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "hard_042": { "violations": ["suspicious_link"], "compliance_score": 0.55, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "hard_043": { "violations": [], "compliance_score": 0.80, "correct_action": "approve", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "hard_044": { "violations": ["hate_speech"], "compliance_score": 0.25, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "hard_045": { "violations": [], "compliance_score": 0.75, "correct_action": "approve", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "hard_046": { "violations": [], "compliance_score": 0.90, "correct_action": "approve", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "hard_047": { "violations": ["harassment"], "compliance_score": 0.35, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } },
+  "hard_048": { "violations": [], "compliance_score": 0.95, "correct_action": "approve", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "hard_049": { "violations": [], "compliance_score": 0.75, "correct_action": "approve", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.25, "decide": 0.30, "confirm": 0.20 } },
+  "hard_050": { "violations": ["violence"], "compliance_score": 0.20, "correct_action": "edit", "difficulty": "hard", "reward_weights": { "detect": 0.25, "score": 0.20, "decide": 0.30, "confirm": 0.25 } }
 }

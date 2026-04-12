@@ -455,15 +455,18 @@ Return ONLY valid JSON with this exact structure:
 
         # Pattern mappings (same as ViolationDetector for consistency)
         patterns = {
-            "hate_speech": ["hate", "slur", "should all die", "kill all"],
-            "violence": ["kill", "attack", "hurt", "violence", "weapon"],
-            "harassment": ["idiot", "stupid", "pathetic", "worthless", "ignorant", "delusional", "sad."],
-            "adult_content": ["explicit", "nsfw", "porn", "dm for pics", "18+"],
-            "misinformation": ["fake news", "conspiracy", "hoax", "they don't want you to know", "wake up"],
-            "spam": ["click here", "buy now", "!!!", "limited time", "free", "visit ", "dm me"],
-            "suspicious_link": ["bit.ly", "tinyurl", "linktr.ee"],
-            "engagement_bait": ["tag someone", "share if", "🔥", "💰", "👇"],
-            "illegal_content": ["illegal", "drugs"],
+            "hate_speech":    ["should all die", "kill all", "i hate those", "they should die"],
+            "violence":       ["kill them", "attack them", "hurt people", "weapon of"],
+            "harassment":     ["you are an idiot", "you are stupid", "you are pathetic",
+                               "you are worthless", "too ignorant to", "so delusional"],
+            "adult_content":  ["explicit content", "nsfw", "porn", "dm for pics"],
+            "misinformation": ["fake news", "they don't want you to know", "wake up sheeple",
+                               "mainstream media won't", "scientists are hiding"],
+            "spam":           ["click here", "buy now", "limited time offer", "free prizes",
+                               "free tips inside", "act now", "win $"],
+            "suspicious_link":["bit.ly/", "tinyurl.com/", "linktr.ee/"],
+            "engagement_bait":["tag someone who", "share if you", "comment below and i"],
+            "illegal_content":["buy illegal", "sell drugs", "illegal weapons"],
         }
 
         # Detect violations

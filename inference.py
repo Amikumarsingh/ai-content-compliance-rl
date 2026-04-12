@@ -42,7 +42,18 @@ from models import ContentAction
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN     = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
-ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
+_raw_url     = os.getenv("ENV_BASE_URL", "http://localhost:7860")
+# Auto-convert HF Space web UI URL → API subdomain URL
+# e.g. https://huggingface.co/spaces/User/space-name → https://user-space-name.hf.space
+def _normalize_hf_url(url: str) -> str:
+    import re
+    m = re.match(r"https?://huggingface\.co/spaces/([^/]+)/([^/]+)/?$", url)
+    if m:
+        user, space = m.group(1).lower(), m.group(2).lower()
+        return f"https://{user}-{space}.hf.space"
+    return url.rstrip("/")
+
+ENV_BASE_URL = _normalize_hf_url(_raw_url)
 ENV_URL      = ENV_BASE_URL.replace("https://", "wss://").replace("http://", "ws://")
 SERVER_PORT  = 7860
 
@@ -71,7 +82,28 @@ def _ensure_server_running() -> None:
     is_local = "localhost" in ENV_BASE_URL or "127.0.0.1" in ENV_BASE_URL
     if not is_local:
         print(f"[DEBUG] Using remote env: {ENV_BASE_URL}", flush=True)
-        return
+        # Health-check the remote server before proceeding
+        print(f"[DEBUG] Resolved API URL: {ENV_BASE_URL}", flush=True)
+        for attempt in range(10):
+            try:
+                req = urllib.request.Request(
+                    f"{ENV_BASE_URL}/health",
+                    headers={"User-Agent": "inference-healthcheck/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    if resp.status < 500:
+                        print(f"[DEBUG] Remote server healthy (HTTP {resp.status}).", flush=True)
+                        return
+            except urllib.error.HTTPError as e:
+                if e.code < 500:
+                    # 4xx means server is up, just wrong path — still reachable
+                    print(f"[DEBUG] Remote server reachable (HTTP {e.code}).", flush=True)
+                    return
+                print(f"[DEBUG] Waiting for remote server... ({attempt + 1}/10) [{e.code}]", flush=True)
+            except Exception as e:
+                print(f"[DEBUG] Waiting for remote server... ({attempt + 1}/10) [{type(e).__name__}]", flush=True)
+            time.sleep(5)
+        raise RuntimeError(f"Remote server at {ENV_BASE_URL} not reachable after 50s")
 
     if _is_port_open(SERVER_PORT):
         print(f"[DEBUG] Server already running on port {SERVER_PORT}", flush=True)
