@@ -22,25 +22,35 @@
 
 @layer components {
   .card {
-    @apply bg-surface-card border border-surface-border rounded-xl shadow-card;
+    background-color: #161b27;
+    border: 1px solid #1e2535;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4);
   }
 
   .btn-primary {
-    @apply flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600
-           text-white text-sm font-semibold rounded-lg transition-all duration-150
+    @apply flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold
+           rounded-lg transition-all duration-150
            disabled:opacity-40 disabled:cursor-not-allowed active:scale-95;
+    background-color: #6366f1;
   }
+  .btn-primary:hover:not(:disabled) { background-color: #4f46e5; }
 
   .btn-ghost {
     @apply flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-slate-100
-           hover:bg-surface-hover text-sm font-medium rounded-lg transition-colors;
+           text-sm font-medium rounded-lg transition-colors;
   }
+  .btn-ghost:hover { background-color: #1a2030; }
 
   .input {
-    @apply w-full bg-surface-card border border-surface-border rounded-lg px-3 py-2
-           text-sm text-slate-100 placeholder-slate-600
-           focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30
-           transition-colors;
+    @apply w-full rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600
+           focus:outline-none transition-colors;
+    background-color: #161b27;
+    border: 1px solid #1e2535;
+  }
+  .input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgb(99 102 241 / 0.15);
   }
 
   .badge {
