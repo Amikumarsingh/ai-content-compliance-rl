@@ -24,3 +24,7 @@ httpx>=0.26.0
 # Utilities
 pyyaml>=6.0.0
 python-json-logger>=2.0.0
+
+# Full stack / GuardRail
+sqlalchemy>=2.0.0
+python-multipart>=0.0.9
