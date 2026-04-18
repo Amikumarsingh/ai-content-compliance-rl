@@ -1,59 +1,88 @@
 import React, { useEffect, useState } from 'react'
-import { Shield, CheckCircle, XCircle, Edit3, Zap } from 'lucide-react'
+import { Shield, CheckCircle2, XCircle, Pencil, Zap, RefreshCw } from 'lucide-react'
 import ContentCard from '../components/ContentCard'
 import { api } from '../hooks/useApi'
 
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({ icon: Icon, label, value, iconClass }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-center gap-4">
-      <div className={`p-2.5 rounded-lg ${color}`}>
-        <Icon size={20} />
+    <div className="card p-5 flex items-center gap-4">
+      <div className={`p-2.5 rounded-lg border ${iconClass}`}>
+        <Icon size={18} />
       </div>
       <div>
-        <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold text-gray-100">{value ?? '—'}</p>
+        <p className="section-title">{label}</p>
+        <p className="text-2xl font-bold text-slate-100 mt-0.5 tabular-nums">{value ?? '—'}</p>
       </div>
     </div>
   )
 }
 
-export default function Dashboard() {
-  const [data, setData] = useState(null)
-  const [logs, setLogs]  = useState([])
+function PageHeader({ title, subtitle, onRefresh, refreshing }) {
+  return (
+    <div className="flex items-start justify-between">
+      <div>
+        <h1 className="text-xl font-bold text-slate-100">{title}</h1>
+        <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+      </div>
+      {onRefresh && (
+        <button onClick={onRefresh} className="btn-ghost">
+          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+          Refresh
+        </button>
+      )}
+    </div>
+  )
+}
 
-  async function load() {
+export default function Dashboard() {
+  const [data,       setData]       = useState(null)
+  const [logs,       setLogs]       = useState([])
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function load(showSpinner = false) {
+    if (showSpinner) setRefreshing(true)
     try {
       const r = await api.get('/analytics')
       setData(r.data)
-      setLogs(r.data.recent || [])
+      setLogs(r.data.recent ?? [])
     } catch {}
+    finally { setRefreshing(false) }
   }
 
-  useEffect(() => { load(); const t = setInterval(load, 10000); return () => clearInterval(t) }, [])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 10_000)
+    return () => clearInterval(t)
+  }, [])
 
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-gray-400 text-sm mt-1">Live moderation feed · auto-refreshes every 10s</p>
-      </div>
+    <div className="p-8 space-y-8 max-w-5xl">
+      <PageHeader
+        title="Dashboard"
+        subtitle="Live moderation feed · auto-refreshes every 10s"
+        onRefresh={() => load(true)}
+        refreshing={refreshing}
+      />
 
+      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Shield}       label="Total Moderated" value={data?.total}    color="bg-brand-500/20 text-brand-500" />
-        <StatCard icon={CheckCircle}  label="Approved"        value={data?.approved} color="bg-green-500/20 text-green-400" />
-        <StatCard icon={XCircle}      label="Rejected"        value={data?.rejected} color="bg-red-500/20 text-red-400"     />
-        <StatCard icon={Zap}          label="Avg Reward"      value={data?.avg_reward?.toFixed(3)} color="bg-purple-500/20 text-purple-400" />
+        <StatCard icon={Shield}      label="Total"      value={data?.total}                    iconClass="bg-brand-500/10 border-brand-500/20 text-brand-400" />
+        <StatCard icon={CheckCircle2}label="Approved"   value={data?.approved}                 iconClass="bg-emerald-500/10 border-emerald-500/20 text-emerald-400" />
+        <StatCard icon={XCircle}     label="Rejected"   value={data?.rejected}                 iconClass="bg-red-500/10 border-red-500/20 text-red-400" />
+        <StatCard icon={Zap}         label="Avg Reward" value={data?.avg_reward?.toFixed(3)}   iconClass="bg-purple-500/10 border-purple-500/20 text-purple-400" />
       </div>
 
-      <div>
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Recent Decisions</h2>
+      {/* Feed */}
+      <div className="space-y-3">
+        <p className="section-title">Recent Decisions</p>
         {logs.length === 0 ? (
-          <div className="text-center py-16 text-gray-600">
-            <Shield size={40} className="mx-auto mb-3 opacity-30" />
-            <p>No moderation logs yet. Use the Playground to test content.</p>
+          <div className="card p-12 text-center">
+            <Shield size={32} className="mx-auto mb-3 text-slate-700" />
+            <p className="text-sm text-slate-500">No moderation logs yet.</p>
+            <p className="text-xs text-slate-600 mt-1">Use the Playground to test content.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {logs.map(log => (
               <ContentCard
                 key={log.id}

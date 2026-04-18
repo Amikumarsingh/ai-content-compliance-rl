@@ -30,3 +30,9 @@ frontend/dist/
 
 # Database
 guardrail.db
+
+# Logs & temp
+server.log
+test_out.txt
+inference_results.json
+*.log
