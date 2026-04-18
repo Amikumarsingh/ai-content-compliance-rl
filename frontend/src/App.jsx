@@ -1,6 +1,6 @@
 import React from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
-import { Shield, LayoutDashboard, FlaskConical, BarChart2, Key, Activity } from 'lucide-react'
+import { Shield, LayoutDashboard, FlaskConical, BarChart2, Key, Zap } from 'lucide-react'
 import Dashboard  from './pages/Dashboard'
 import Playground from './pages/Playground'
 import Analytics  from './pages/Analytics'
@@ -15,47 +15,60 @@ const NAV = [
 
 export default function App() {
   return (
-    <div className="flex h-screen overflow-hidden bg-surface text-slate-100">
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
+
       {/* ── Sidebar ── */}
-      <aside className="w-60 flex-shrink-0 flex flex-col border-r border-surface-border bg-surface-card">
+      <aside
+        className="w-60 flex-shrink-0 flex flex-col"
+        style={{
+          background: 'var(--bg-card)',
+          borderRight: '1px solid var(--border)',
+        }}
+      >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-5 h-16 border-b border-surface-border">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-500/20 border border-brand-500/30">
-            <Shield size={16} className="text-brand-400" />
+        <div className="flex items-center gap-3 px-5 h-16" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div
+            className="flex items-center justify-center w-8 h-8 rounded-lg"
+            style={{ background: 'var(--accent-dim)', border: '1px solid rgba(139,92,246,0.25)' }}
+          >
+            <Shield size={15} style={{ color: 'var(--accent)' }} />
           </div>
           <div>
-            <p className="font-bold text-sm tracking-tight text-slate-100">GuardRail</p>
-            <p className="text-[10px] text-slate-500 leading-none">AI Moderation Platform</p>
+            <p className="font-bold text-sm" style={{ color: 'var(--text-1)' }}>GuardRail</p>
+            <p style={{ fontSize: 10, color: 'var(--text-3)', lineHeight: 1.2 }}>AI Moderation</p>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          <p className="section-title px-3 mb-3">Navigation</p>
+        <nav className="flex-1 px-3 py-5 space-y-0.5">
           {NAV.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                  isActive
-                    ? 'bg-brand-500/15 text-brand-400 border border-brand-500/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-surface-hover border border-transparent'
-                }`
+              className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
+              style={({ isActive }) => isActive
+                ? { display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8,
+                    background:'var(--accent-dim)', color:'#c4b5fd',
+                    border:'1px solid rgba(139,92,246,0.2)', fontSize:13, fontWeight:500 }
+                : { display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8,
+                    color:'var(--text-2)', border:'1px solid transparent', fontSize:13, fontWeight:500,
+                    transition:'all 0.15s' }
               }
+              onMouseEnter={e => { if (!e.currentTarget.classList.contains('nav-item-active')) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-1)' }}}
+              onMouseLeave={e => { if (!e.currentTarget.classList.contains('nav-item-active')) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-2)' }}}
             >
-              <Icon size={15} />
+              <Icon size={14} />
               {label}
             </NavLink>
           ))}
         </nav>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-surface-border">
+        <div className="px-5 py-4" style={{ borderTop: '1px solid var(--border)' }}>
           <div className="flex items-center gap-2">
-            <Activity size={12} className="text-green-400" />
-            <span className="text-xs text-slate-500">v1.0.0 · RL-powered</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>v1.0.0 · RL-powered</span>
           </div>
         </div>
       </aside>

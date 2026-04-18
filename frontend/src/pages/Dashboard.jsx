@@ -1,35 +1,33 @@
 import React, { useEffect, useState } from 'react'
-import { Shield, CheckCircle2, XCircle, Pencil, Zap, RefreshCw } from 'lucide-react'
+import { Shield, CheckCircle2, XCircle, Zap, RefreshCw, TrendingUp } from 'lucide-react'
 import ContentCard from '../components/ContentCard'
 import { api } from '../hooks/useApi'
 
-function StatCard({ icon: Icon, label, value, iconClass }) {
-  return (
-    <div className="card p-5 flex items-center gap-4">
-      <div className={`p-2.5 rounded-lg border ${iconClass}`}>
-        <Icon size={18} />
-      </div>
-      <div>
-        <p className="section-title">{label}</p>
-        <p className="text-2xl font-bold text-slate-100 mt-0.5 tabular-nums">{value ?? '—'}</p>
-      </div>
-    </div>
-  )
-}
+const STATS = [
+  { key: 'total',      label: 'Total Moderated', icon: Shield,       accent: '#8b5cf6', glow: 'rgba(139,92,246,0.15)' },
+  { key: 'approved',   label: 'Approved',         icon: CheckCircle2, accent: '#34d399', glow: 'rgba(52,211,153,0.15)'  },
+  { key: 'rejected',   label: 'Rejected',          icon: XCircle,      accent: '#f87171', glow: 'rgba(248,113,113,0.15)' },
+  { key: 'avg_reward', label: 'Avg Reward',        icon: Zap,          accent: '#fbbf24', glow: 'rgba(251,191,36,0.15)',  fmt: v => v?.toFixed(3) },
+]
 
-function PageHeader({ title, subtitle, onRefresh, refreshing }) {
+function StatCard({ label, value, icon: Icon, accent, glow }) {
   return (
-    <div className="flex items-start justify-between">
-      <div>
-        <h1 className="text-xl font-bold text-slate-100">{title}</h1>
-        <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+    <div
+      className="card p-5 flex items-center gap-4 transition-all duration-200 hover:scale-[1.01]"
+      style={{ boxShadow: `0 1px 3px rgb(0 0 0 / 0.5), 0 0 0 1px rgba(255,255,255,0.03)` }}
+    >
+      <div
+        className="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0"
+        style={{ background: `${accent}18`, border: `1px solid ${accent}30`, boxShadow: `0 0 16px ${glow}` }}
+      >
+        <Icon size={18} style={{ color: accent }} />
       </div>
-      {onRefresh && (
-        <button onClick={onRefresh} className="btn-ghost">
-          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-          Refresh
-        </button>
-      )}
+      <div>
+        <p className="label">{label}</p>
+        <p className="text-2xl font-bold mt-0.5 tabular-nums" style={{ color: 'var(--text-1)' }}>
+          {value ?? '—'}
+        </p>
+      </div>
     </div>
   )
 }
@@ -39,8 +37,8 @@ export default function Dashboard() {
   const [logs,       setLogs]       = useState([])
   const [refreshing, setRefreshing] = useState(false)
 
-  async function load(showSpinner = false) {
-    if (showSpinner) setRefreshing(true)
+  async function load(spinner = false) {
+    if (spinner) setRefreshing(true)
     try {
       const r = await api.get('/analytics')
       setData(r.data)
@@ -57,29 +55,59 @@ export default function Dashboard() {
 
   return (
     <div className="p-8 space-y-8 max-w-5xl">
-      <PageHeader
-        title="Dashboard"
-        subtitle="Live moderation feed · auto-refreshes every 10s"
-        onRefresh={() => load(true)}
-        refreshing={refreshing}
-      />
+
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>Dashboard</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-3)' }}>
+            Live moderation feed · auto-refreshes every 10s
+          </p>
+        </div>
+        <button onClick={() => load(true)} className="btn-secondary">
+          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+          Refresh
+        </button>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Shield}      label="Total"      value={data?.total}                    iconClass="bg-brand-500/10 border-brand-500/20 text-brand-400" />
-        <StatCard icon={CheckCircle2}label="Approved"   value={data?.approved}                 iconClass="bg-emerald-500/10 border-emerald-500/20 text-emerald-400" />
-        <StatCard icon={XCircle}     label="Rejected"   value={data?.rejected}                 iconClass="bg-red-500/10 border-red-500/20 text-red-400" />
-        <StatCard icon={Zap}         label="Avg Reward" value={data?.avg_reward?.toFixed(3)}   iconClass="bg-purple-500/10 border-purple-500/20 text-purple-400" />
+        {STATS.map(({ key, label, icon, accent, glow, fmt }) => (
+          <StatCard
+            key={key}
+            label={label}
+            value={fmt ? fmt(data?.[key]) : data?.[key]}
+            icon={icon}
+            accent={accent}
+            glow={glow}
+          />
+        ))}
       </div>
 
       {/* Feed */}
       <div className="space-y-3">
-        <p className="section-title">Recent Decisions</p>
+        <div className="flex items-center justify-between">
+          <p className="label">Recent Decisions</p>
+          {logs.length > 0 && (
+            <span className="text-xs" style={{ color: 'var(--text-3)' }}>{logs.length} entries</span>
+          )}
+        </div>
+
         {logs.length === 0 ? (
-          <div className="card p-12 text-center">
-            <Shield size={32} className="mx-auto mb-3 text-slate-700" />
-            <p className="text-sm text-slate-500">No moderation logs yet.</p>
-            <p className="text-xs text-slate-600 mt-1">Use the Playground to test content.</p>
+          <div
+            className="card p-14 text-center"
+            style={{ background: 'linear-gradient(135deg, var(--bg-card), var(--bg-elevated))' }}
+          >
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: 'var(--accent-dim)', border: '1px solid rgba(139,92,246,0.2)' }}
+            >
+              <Shield size={22} style={{ color: 'var(--accent)' }} />
+            </div>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-2)' }}>No moderation logs yet</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
+              Use the Playground to test content
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
